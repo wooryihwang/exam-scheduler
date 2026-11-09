@@ -501,3 +501,8 @@ body[data-grade="3"] .page { --p-accent: #9b1c1c; }
 /* 10-1: 고사실별 인원은 검정, 응시계만 붉게 (examtable과 동일) */
 .page.allpage .ptbl.all .p-cnt { color: #334155; font-weight: 700; }
 .page.allpage .ptbl.all .p-total { color: var(--p-accent); font-weight: 900; }
+/* 10-2·10-4 명렬: 5명 묶음마다 번갈아 연한 음영 (6~10, 16~20 …) — examtable과 동일 */
+.page .ptbl.seat-list2 tr:nth-child(even) td { background: #fff; }
+.page .ptbl.roster2 tbody tr:nth-child(10n+6) td, .page .ptbl.roster2 tbody tr:nth-child(10n+7) td, .page .ptbl.roster2 tbody tr:nth-child(10n+8) td, .page .ptbl.roster2 tbody tr:nth-child(10n+9) td, .page .ptbl.roster2 tbody tr:nth-child(10n+10) td,
+.page .ptbl.seat-list2 tbody tr:nth-child(10n+6) td, .page .ptbl.seat-list2 tbody tr:nth-child(10n+7) td, .page .ptbl.seat-list2 tbody tr:nth-child(10n+8) td, .page .ptbl.seat-list2 tbody tr:nth-child(10n+9) td, .page .ptbl.seat-list2 tbody tr:nth-child(10n+10) td { background: #f8fafc; }
+.page .ptbl.roster2 td, .page .ptbl.seat-list2 td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
