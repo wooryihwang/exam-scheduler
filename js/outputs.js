@@ -423,7 +423,7 @@
         preview = `<div class="label-layout no-print-inner">
           <div class="card code-card"><h3>과목코드 입력 <span class="muted">(선택)</span></h3>
             <p class="hint">과목마다 봉투 라벨에 함께 인쇄할 과목코드를 적습니다. 비워 두면 과목명만 인쇄됩니다.</p>
-            <table class="tbl compact code-tbl"><tbody>${subs.map((x) => `<tr><td>${h(x)}</td><td><input class="input sm" data-change="o-code" data-s="${h(x)}" value="${h(st().subjectCodes[x] || '')}" placeholder="예: 1234"></td></tr>`).join('')}</tbody></table>
+            <table class="tbl compact code-tbl"><tbody>${subs.map((x) => `<tr><td>${h(x)}</td><td><input class="input sm" data-change="o-code" data-s="${h(x)}" value="${h(st().subjectCodes[x] || '')}" placeholder="12" maxlength="6"></td></tr>`).join('')}</tbody></table>
             <div class="code-save"><button class="btn primary sm" data-act="o-code-save" title="적어 둔 과목코드를 모두 저장하고 오른쪽 미리보기를 새로 그립니다">💾 과목코드 입력 저장</button></div>
           </div>
           <div class="label-preview">${cur ? pagesLabels([cur]) : '<div class="empty"><p>인쇄할 라벨이 없습니다. 시간표와 고사장 배치를 먼저 확정하세요.</p></div>'}</div>
