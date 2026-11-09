@@ -497,7 +497,9 @@ body[data-grade="3"] .page { --p-accent: #9b1c1c; }
 .tk-bar, .env-box, .env-subj, .page .ptbl.tk-tbl tr.exam td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 /* 10-8 개별 수험표 소제목·표 너비 */
 .sp-ticket .sh-title { color: var(--p-accent); font-weight: 900; }
-.sp-ticket .ptbl.sp-grid { width: 100%; table-layout: fixed; }
+.sp-ticket .ptbl.sp-tk { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.sp-ticket .ptbl.sp-tk thead th { border-bottom: 1.5px solid var(--p-ink); }
+.sp-ticket .ptbl.sp-tk th:first-child, .sp-ticket .ptbl.sp-tk td:first-child { border-right: 1.5px solid var(--p-ink); font-weight: 900; }
 /* 10-1: 고사실별 인원은 검정, 응시계만 붉게 (examtable과 동일) */
 .page.allpage .ptbl.all .p-cnt { color: #334155; font-weight: 700; }
 .page.allpage .ptbl.all .p-total { color: var(--p-accent); font-weight: 900; }

@@ -286,7 +286,7 @@
         <tbody>${rows.map(({ sl, r }, k) => `<tr><td class="no">${k + 1}</td><td class="nm">${h(U.fmtDateShort(slotDate(sl)))} ${sl.period}교시</td><td>${h(C.onlySubject(r.subject))}${r.extra ? ` <small>(+${r.extra}분 → ${h((timeWith(sl, r.extra).split('~')[1] || '').trim())})</small>` : ''}</td><td class="acc">${h(r.origRoom || '')}</td><td></td></tr>`).join('')}</tbody></table>` : '<p class="p-note">아직 배치된 교시가 없습니다.</p>'}
       <p class="p-note sp-notes">· 이 학생은 <b>원고사실 명단에도 그대로 올라 있습니다.</b> 명단 비고에 '별도'로 표시됩니다.<br>· 좌석배치도에는 나오지 않습니다. 그 교실에 앉지 않기 때문입니다.<br>· 시험이 끝나면 답안지를 원고사실 것과 합쳐 주세요.</p>
       <div class="sp-ticket"><div class="sh-title small">개별 수험표</div><div class="sh-line sm">${x.grade}학년 ${h(x.ban)} ${x.num}번 ${h(x.name)} · 학번 ${C.studentNo(x.grade, x.ban, x.num)}</div>
-        <table class="ptbl sp-grid">${eqCols([12], days.length)}<thead><tr><th>교시</th>${days.map((d) => `<th>${d}일차<small>${h(U.fmtDateShort(st().dates[d - 1]))}</small></th>`).join('')}</tr></thead><tbody>${grid}</tbody></table>
+        <table class="ptbl sp-tk">${eqCols([12], days.length)}<thead><tr><th>교시</th>${days.map((d) => `<th>${d}일차<small>${h(U.fmtDateShort(st().dates[d - 1]))}</small></th>`).join('')}</tr></thead><tbody>${grid}</tbody></table>
         <p class="p-note">고사실 뒤에 <b class="amber">(별)</b>이 붙은 교시는 별도 고사실에서 봅니다.</p></div></div>`;
   }
   const pagesSpGuide = (list) => list.map(spGuide).join('');
