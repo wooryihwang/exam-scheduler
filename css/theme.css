@@ -506,3 +506,5 @@ body[data-grade="3"] .page { --p-accent: #9b1c1c; }
 .page .ptbl.roster2 tbody tr:nth-child(10n+6) td, .page .ptbl.roster2 tbody tr:nth-child(10n+7) td, .page .ptbl.roster2 tbody tr:nth-child(10n+8) td, .page .ptbl.roster2 tbody tr:nth-child(10n+9) td, .page .ptbl.roster2 tbody tr:nth-child(10n+10) td,
 .page .ptbl.seat-list2 tbody tr:nth-child(10n+6) td, .page .ptbl.seat-list2 tbody tr:nth-child(10n+7) td, .page .ptbl.seat-list2 tbody tr:nth-child(10n+8) td, .page .ptbl.seat-list2 tbody tr:nth-child(10n+9) td, .page .ptbl.seat-list2 tbody tr:nth-child(10n+10) td { background: #f8fafc; }
 .page .ptbl.roster2 td, .page .ptbl.seat-list2 td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+/* 10-5 학급 시간표: 5명 묶음마다 번갈아 연한 음영 (10-2와 동일) */
+.page.clspage .ptbl.cls2 tbody tr:nth-child(10n+6) td, .page.clspage .ptbl.cls2 tbody tr:nth-child(10n+7) td, .page.clspage .ptbl.cls2 tbody tr:nth-child(10n+8) td, .page.clspage .ptbl.cls2 tbody tr:nth-child(10n+9) td, .page.clspage .ptbl.cls2 tbody tr:nth-child(10n+10) td { background: #f8fafc; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
