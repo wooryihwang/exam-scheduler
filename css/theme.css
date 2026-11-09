@@ -191,3 +191,17 @@ body[data-grade] .proj-select { box-shadow: inset 3px 0 0 var(--navy); }
 /* 모바일 메뉴 단추는 좁은 화면에서만 */
 .menu-btn { display: none; }
 @media (max-width: 860px) { .menu-btn { display: inline-flex; } }
+
+/* ------------------------------------------------------------ 설명 라벨
+   '용지 · 범위 · 번호 순서 · 모양 · 자동 배치 방식'처럼 옆 선택지가 무엇인지 알려 주는 글자.
+   누르는 것이 아니므로 버튼(남색·흰색)과 다른 따뜻한 갈색 계열로 표시한다. */
+:root { --cap: #8a5a00; --cap-bg: #fdf4df; --cap-line: #f0dfb0; }
+.scope-label { background: var(--cap-bg); color: var(--cap); border-right: 1px solid var(--cap-line); font-weight: 800; font-size: 12.5px; cursor: default; user-select: none; }
+.scope-label::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--cap); opacity: .55; margin-right: 7px; flex: none; }
+.seg-label { color: var(--cap); background: var(--cap-bg); border: 1px solid var(--cap-line); border-radius: 6px; padding: 2px 8px; margin-right: 2px; font-weight: 700; font-size: 12px; cursor: default; }
+.inline:not(.chk) { color: var(--cap); font-weight: 700; font-size: 13px; }
+.inline:not(.chk) > .input, .inline:not(.chk) > select, .inline:not(.chk) > input { color: var(--text); font-weight: 600; }
+.form-row > label { color: var(--cap); font-weight: 700; }
+.toolbar .inline:not(.chk) { background: var(--cap-bg); border: 1px solid var(--cap-line); border-radius: 9px; padding: 3px 4px 3px 10px; }
+.toolbar .inline:not(.chk) > .input { background: #fff; }
+.seat-list-title, .room-tools > span:first-child { color: var(--cap); }
