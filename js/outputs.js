@@ -80,6 +80,10 @@
     return `<colgroup>${heads.map((w) => `<col style="width:${w}%">`).join('')}${Array.from({ length: n }, () => `<col style="width:${each}%">`).join('')}</colgroup>`;
   };
   const schoolLine = () => (S.school() ? `<div class="p-school">${h(S.school())}</div>` : '');
+  /** 4칸 정보표 (머리글 한 줄 + 값 한 줄). emph: 붉게 강조할 칸 번호 */
+  const infoTbl = (items, emph = [], cls = '') => `<table class="ptbl seat-info info4 ${cls}"><thead><tr>${items.map(([k]) => `<th>${k}</th>`).join('')}</tr></thead><tbody><tr>${items.map(([, v], i) => `<td class="${emph.includes(i) ? 'acc' : ''}">${v}</td>`).join('')}</tr></tbody></table>`;
+  /** 쪽 머리: 작은 시험 이름 → 큰 붉은 제목(+쪽 표시) → 부제 → 정보표. title/sub 는 이미 escape 된 HTML */
+  const sheetHead = (title, sub = '', info = null, emph = [], pageLabel = '') => `<div class="seat-head">${schoolLine()}<div class="sh-sub">${h(S.title())}</div><div class="sh-title">${title}${pageLabel ? ` <span class="sh-page">${h(pageLabel)}</span>` : ''}</div>${sub ? `<div class="sh-line">${sub}</div>` : ''}</div>${info ? infoTbl(info, emph) : ''}`;
   const pageHead = (title, sub = '') => `<div class="p-head">${schoolLine()}<div class="p-title">${h(title)}</div>${sub ? `<div class="p-sub">${sub}</div>` : ''}</div>`;
 
   // ---------------------------------------------------------------- 9-1 전체 시간표 (MakeGradeTable)
@@ -135,19 +139,23 @@
 
   // ---------------------------------------------------------------- 9-3 고사실별 시험시간표
   function pageRoomTT(i) {
-    const room = roomAt(i), days = examDays(), periods = examPeriods();
-    const slots = S.slots();
-    return `<div class="page fill" data-sheet="${h(room.name)}">${pageHead('고사실 시험시간표', h(S.title()))}
-      <div class="p-big">고사실: <b>${h(room.name)}</b>${room.ban ? ` <span>(${h(room.ban)})</span>` : ''}</div>
-      <table class="ptbl roomtt eq fill-main">${eqCols([16], days.length)}<thead><tr><th>교시</th>${days.map((d) => `<th>${d}일차<br><small>${h(U.fmtDateShort(st().dates[d - 1]))}</small></th>`).join('')}</tr></thead>
-      <tbody>${periods.map((p) => `<tr><th>${p}교시<br><small>${h((st().times[C.slotKey(days[0], p)] || '').replace(/\s/g, ''))}</small></th>${days.map((d) => {
-        const slot = slots.find((s) => s.day === d && s.period === p);
-        if (!slot) return room.ban && C.isClassRoom(room) ? `<td class="p-wait">자습<br><small>${h(room.ban)}</small></td>` : '<td class="dim">·</td>';
-        const c = cellOf(slot, i);
-        if (c.kind === 'exam') return c.special ? `<td><b>${h(c.subject)}</b><br><small>${c.count}명${(() => { const e = roomExtra(slot.key, i); return e.max ? ` · ${e.same ? '' : '최대 '}+${e.max}분` : ''; })()}</small></td>` : `<td><b>${h(C.onlySubject(c.subject))}</b><br><small>${c.label ? `${h(c.label)} · ` : ''}${c.count}명</small></td>`;
-        if (c.kind === 'wait') return `<td class="p-wait">대기(자습)<br><small>${c.count}명</small></td>`;
-        return '<td class="dim">·</td>';
-      }).join('')}</tr>`).join('')}</tbody></table></div>`;
+    const room = roomAt(i), days = examDays(), periods = examPeriods(), slots = S.slots();
+    const classSize = room.ban ? S.students().filter((x) => x.ban === room.ban).length : 0;
+    const k = periods.length >= 5 ? 'k5' : periods.length === 4 ? 'k4' : '';
+    const cellAt = (d, p) => {
+      const slot = slots.find((x) => x.day === d && x.period === p);
+      if (!slot) return room.ban && C.isClassRoom(room) ? { subject: '자습', count: classSize || '', time: (st().times[C.slotKey(d, p)] || '').replace(/\s/g, '') } : null;
+      const c = cellOf(slot, i);
+      if (c.kind === 'exam') return { subject: c.special ? c.subject : C.onlySubject(c.subject), count: c.count, time: slotTime(slot).replace(/\s/g, ''), extra: c.special ? roomExtra(slot.key, i) : null };
+      if (c.kind === 'wait') return { subject: '대기실', count: c.count, time: slotTime(slot).replace(/\s/g, ''), wait: true };
+      return null;
+    };
+    const rows = periods.map((p) => `<tr class="r-subj"><th class="p-period" rowspan="3">${p}교시</th><th class="p-gubun">과목</th>${days.map((d) => { const c = cellAt(d, p); return `<td class="subj ${c && (c.wait || c.subject === '자습') ? 'wait' : ''}">${c ? h(c.subject) : '-'}</td>`; }).join('')}</tr>
+      <tr class="r-cnt"><th class="p-gubun">응시자수</th>${days.map((d) => { const c = cellAt(d, p); return `<td class="acc">${c && c.count !== '' && c.count != null ? `${c.count}명` : '-'}${c && c.extra && c.extra.max ? `<span class="sp-extra">${c.extra.same ? '' : '최대 '}+${c.extra.max}분</span>` : ''}</td>`; }).join('')}</tr>
+      <tr class="r-time"><th class="p-gubun">시험시간</th>${days.map((d) => { const c = cellAt(d, p); return `<td class="time">${c && c.time ? h(c.time) : '-'}</td>`; }).join('')}</tr>`).join('');
+    return `<div class="page landscape fill roomttpage ${k}" data-sheet="${h(room.name)}">
+      ${sheetHead(`고사실 시험시간표 (${h(room.name)})`, '', [['고사실', h(room.name)], ['소속반', h(room.ban || '-')], ['시험 일수', `${days.length}일`], ['하루 교시', `${periods.length}교시`]], [0, 2])}
+      <table class="ptbl roomtt2 fill-main">${eqCols([9, 11], days.length)}<thead><tr><th>교시</th><th>구분</th>${days.map((d) => `<th>${d}일차<small>${h(U.fmtDateShort(st().dates[d - 1]))}</small></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
   }
 
   // ---------------------------------------------------------------- 9-4 좌석 배치표
@@ -189,103 +197,118 @@
       <div class="podium top bar">교 탁 (앞)</div>${grid.replace('<table class="seat-grid fill-main">', `<table class="seat-grid cards with-list ${seatH < 14 ? 'small' : ''}" style="--seat-h:${seatH.toFixed(1)}mm">`)}${listTbl}${blanks ? `<p class="p-note">※ 점선 칸 ${blanks}개는 ${st().seatCols}열 × ${g.rows}줄 책상 중 응시자가 없는 자리입니다. (열의 수는 위쪽에서 바꿀 수 있습니다)</p>` : ''}${away.size ? `<p class="p-note">※ 별도실로 옮긴 학생 자리 ${away.size}개는 비워 두었습니다.</p>` : ''}</div>`;
   }
 
-  // ---------------------------------------------------------------- 9-5 학급별 고사시간표
+  // ---------------------------------------------------------------- 9-5 학급별 고사시간표 (세로, 한 장 35명)
   function pageClass(ban, day) {
-    const slots = S.slots().filter((s) => s.day === day);
-    const stu = S.students().filter((x) => x.ban === ban);
-    const idx = byStudent();
-    return `<div class="page fill cls-page ${stu.length > 32 ? 'dense' : ''}" data-sheet="${h(`${ban} ${day}일차`)}">${pageHead(`${ban} 고사 시간표`, `${h(S.title())} · ${day}일차 ${h(U.fmtDate(st().dates[day - 1]))}`)}
-      <table class="ptbl cls eq fill-main">${eqCols([5, 9], slots.length * 2)}<thead><tr><th rowspan="2">번호</th><th rowspan="2">성명</th>${slots.map((s) => `<th colspan="2">${s.period}교시 <small>${h(slotTime(s).replace(/\s/g, ''))}</small></th>`).join('')}</tr>
-      <tr>${slots.map(() => '<th>과목</th><th>고사실</th>').join('')}</tr></thead>
-      <tbody>${stu.map((x) => `<tr><td>${x.num}</td><td>${h(x.name)}</td>${slots.map((s) => {
-        const r = idx.get(`${x.key}|${s.key}`);
-        if (!r) return '<td class="bad-text" colspan="2">확인 필요</td>';
-        return r.subject === '미응시' ? `<td class="p-wait">자습</td><td>${h(r.room)}</td>` : `<td>${h(C.onlySubject(r.subject))}</td><td>${r.special ? '<b>' : ''}${h(r.room)}${r.special ? '</b>' : ''} <small>(${r.seat})${extraTag(r)}</small></td>`;
-      }).join('')}</tr>`).join('')}</tbody></table>
-      <p class="p-note">※ 고사실 옆 괄호 안의 숫자는 좌석번호입니다.</p></div>`;
+    const slots = S.slots().filter((x) => x.day === day);
+    const stu = S.students().filter((x) => x.ban === ban), idx = byStudent();
+    const home = st().rooms.find((r) => r.ban === ban);
+    const date = U.fmtDate(st().dates[day - 1]);
+    const per = 35, pages = Math.max(1, Math.ceil(stu.length / per));
+    return Array.from({ length: pages }, (_, pi) => {
+      const chunk = stu.slice(pi * per, (pi + 1) * per);
+      const row = (x) => {
+        let sp = false;
+        const cells = slots.map((sl) => {
+          const r = idx.get(`${x.key}|${sl.key}`);
+          if (!r) return '<td class="bad-text" colspan="2">확인 필요</td>';
+          if (r.subject === '미응시') return `<td class="wait">자습</td><td class="room wait">${h(r.room)}</td>`;
+          if (r.special) sp = true;
+          return `<td class="subj">${h(C.onlySubject(r.subject))}</td><td class="room ${r.special ? 'sp' : 'acc'}">${h(r.room)}${r.special ? '(별)' : ''}</td>`;
+        }).join('');
+        return `<tr><td class="no">${x.num}</td><td class="nm">${h(x.name)}</td>${cells}<td class="memo">${sp ? '별도 고사실' : ''}</td></tr>`;
+      };
+      const blanks = Array.from({ length: Math.max(0, per - chunk.length) }, (_, k) => `<tr class="blank"><td class="no">${pi * per + chunk.length + k + 1}</td><td></td>${slots.map(() => '<td></td><td></td>').join('')}<td></td></tr>`).join('');
+      return `<div class="page fill clspage" data-sheet="${h(`${ban} ${day}일차${pi ? ` (${pi + 1})` : ''}`)}">
+        ${sheetHead(`${h(ban)} 시험시간표${home ? ` (고사실 ${h(home.name)})` : ''}`, `${day}일차 · ${h(date || '-')}`, [['학급', h(ban)], ['소속 고사실', h(home ? home.name : '없음')], ['시행일', h(date || '-')], ['인원', `${stu.length}명`]], [1, 3], pages > 1 ? `#${pi + 1} / ${pages}` : '')}
+        <table class="ptbl cls2 sheet5"><colgroup><col style="width:7%"><col style="width:12%">${slots.map(() => `<col style="width:${(72 / slots.length * 0.62).toFixed(2)}%"><col style="width:${(72 / slots.length * 0.38).toFixed(2)}%">`).join('')}<col style="width:9%"></colgroup>
+        <thead><tr><th rowspan="2">번호</th><th rowspan="2">성명</th>${slots.map((sl) => `<th colspan="2">${sl.period}교시</th>`).join('')}<th rowspan="2">비고</th></tr><tr class="sub">${slots.map(() => '<th>과목명</th><th>고사실</th>').join('')}</tr></thead>
+        <tbody>${chunk.map(row).join('')}${blanks}</tbody></table></div>`;
+    }).join('');
   }
 
-  // ---------------------------------------------------------------- 9-6 학생별 시험시간표 (A4 한 장에 4명)
-  /**
-   * 학생 한 명의 시험시간표. transpose=true 면 가로=교시, 세로=일차 (2×2 배치처럼 폭이 좁을 때)
-   */
-  function slipStudent(x, transpose) {
+  // ---------------------------------------------------------------- 9-6 개별 수험표 (A4 4분할 또는 1명 크게)
+  function slipStudent(x) {
     const idx = byStudent(), days = examDays(), periods = examPeriods(), slots = S.slots();
-    const cell = (d, p) => {
-      const s = slots.find((y) => y.day === d && y.period === p);
-      // 학년 전체 시험이 없는 교시: 자기 반 교실에서 자습
-      if (!s) { const home = st().rooms.find((y) => y.ban === x.ban); return `<td class="p-wait">자습${home ? `<br><small>${h(home.name)}</small>` : ''}</td>`; }
-      const r = idx.get(`${x.key}|${s.key}`);
-      if (!r) return '<td class="bad-text">확인 필요</td>';
-      const extra = r.special && r.extra ? ` · +${r.extra}분` : '';
-      return r.subject === '미응시' ? `<td class="p-wait">자습<br><small>${h(r.room)}</small></td>` : `<td><b>${h(C.onlySubject(r.subject))}</b><br><small>${h(r.room)}${st().out.slipSeat ? ` · ${r.seat}번` : ''}${extra}</small></td>`;
-    };
-    const dayHead = (d) => `${d}일차 <small>${h(U.fmtDateShort(st().dates[d - 1]))}</small>`;
-    const table = transpose
-      ? `<table class="ptbl slip-tbl tr eq">${eqCols([16], periods.length)}<thead><tr><th>일차</th>${periods.map((p) => `<th>${p}교시</th>`).join('')}</tr></thead>
-         <tbody>${days.map((d) => `<tr><th>${dayHead(d)}</th>${periods.map((p) => cell(d, p)).join('')}</tr>`).join('')}</tbody></table>`
-      : `<table class="ptbl slip-tbl eq">${eqCols([12], days.length)}<thead><tr><th>교시</th>${days.map((d) => `<th>${dayHead(d)}</th>`).join('')}</tr></thead>
-         <tbody>${periods.map((p) => `<tr><th>${p}교시</th>${days.map((d) => cell(d, p)).join('')}</tr>`).join('')}</tbody></table>`;
-    return `<div class="slip">
-      <div class="slip-head"><div class="slip-top"><span>${h(S.school() || '')}</span><b>${C.studentNo(x.grade, x.ban, x.num)} ${h(x.name)}</b></div><div class="slip-title">${h(S.title())} 시험시간표</div></div>
-      ${table}${slipNote()}</div>`;
+    const home = st().rooms.find((y) => y.ban === x.ban);
+    const rows = days.map((d, di) => periods.map((p, pi) => {
+      const sl = slots.find((y) => y.day === d && y.period === p);
+      const r = sl ? idx.get(`${x.key}|${sl.key}`) : null;
+      let cls = 'wait', subj = '자습', room = home ? home.name : '-', seat = '', time = sl ? slotTime(sl).replace(/\s/g, '') : '';
+      if (sl && !r) { cls = 'bad'; subj = '확인 필요'; room = '-'; }
+      else if (r && r.subject !== '미응시') { cls = 'exam'; subj = C.onlySubject(r.subject); room = r.room + (r.special ? '(별)' : ''); seat = r.seat != null ? String(r.seat) : ''; }
+      else if (r) room = r.room;
+      return `<tr class="${cls} ${pi === 0 && di > 0 ? 'day-top' : ''}">${pi === 0 ? `<td class="day" rowspan="${periods.length}"><div class="d">${d}일차</div><div class="dt">${h(U.fmtDateShort(st().dates[d - 1]))}</div></td>` : ''}<td class="per">${p}</td><td class="time">${h(time || '-')}</td><td class="subj">${h(subj)}</td><td class="room">${h(room)}</td><td class="seat">${st().out.slipSeat ? h(seat) : ''}</td></tr>`;
+    }).join('')).join('');
+    return `<div class="slip ticket">
+      <div class="tk-bar"></div>
+      <div class="tk-head">${schoolLine()}<span class="tk-title">${h(S.title())}</span> <span class="tk-suffix">수험표</span></div>
+      <div class="tk-id"><span><small>학번</small><b class="acc">${C.studentNo(x.grade, x.ban, x.num)}</b></span><span><small>성명</small><b>${h(x.name)}</b></span></div>
+      <table class="ptbl tk-tbl"><colgroup><col style="width:13%"><col style="width:8%"><col style="width:20%"><col style="width:31%"><col style="width:20%"><col style="width:8%"></colgroup><thead><tr><th>일자</th><th>교시</th><th>시간</th><th>과목</th><th>고사실</th><th>좌석</th></tr></thead><tbody>${rows}</tbody></table>
+      ${slipNote()}</div>`;
   }
-  /** 학생별 시간표 하단 유의사항 */
+  /** 수험표 하단 유의사항 */
   const slipNote = () => {
     const o = st().out;
     const lines = o.slipNoteOn ? String(o.slipNote || '').split(/\r?\n/).map((x) => x.trim()).filter(Boolean) : [];
     return lines.length ? `<div class="slip-note">${lines.map((x) => `<div>※ ${h(x)}</div>`).join('')}</div>` : '';
   };
-  /** 학생별 시간표 배치 형태: rows 가로 4등분 / grid 가로·세로 4등분(2×2) / one 한 장에 1명 */
-  const SLIP_LAYOUTS = [['rows', '가로 4등분 (한 장에 4명, 위아래)'], ['grid', '가로·세로 4등분 (한 장에 4명, 2×2)'], ['one', '한 장에 1명']];
+  /** 배치 형태: grid 한 장에 4명(2×2) / one 한 장에 1명 크게 */
+  const SLIP_LAYOUTS = [['grid', 'A4 4분할 (한 장에 4명)'], ['one', '1명 크게 (한 장에 1명)']];
   const pagesStudents = (list) => {
-    const lay = ui.slipLayout || 'rows';
+    const lay = (ui.slipLayout || 'grid') === 'one' ? 'one' : 'grid';
     const per = lay === 'one' ? 1 : 4;
     const out = [];
     for (let i = 0; i < list.length; i += per) {
       const last = list[Math.min(i + per - 1, list.length - 1)];
       const name = per === 1 ? `${list[i].ban} ${list[i].num}번 ${list[i].name}` : `${list[i].ban} ${list[i].num}~${last.num}번`;
-      // 2×2·한 장에 1명은 가로 내용(일차)이 많으면 표를 돌려 가로=교시, 세로=일차
-      const tr = (lay === 'grid' || lay === 'one') && examDays().length > examPeriods().length;
-      out.push(`<div class="page slips ${lay} ${slipNote() ? 'with-note' : ''}" data-layout="${lay}" data-sheet="${h(name)}">${list.slice(i, i + per).map((x) => slipStudent(x, tr)).join('')}</div>`);
+      out.push(`<div class="page slips ${lay} ${slipNote() ? 'with-note' : ''}" data-layout="${lay}" data-sheet="${h(name)}">${list.slice(i, i + per).map((x) => slipStudent(x)).join('')}</div>`);
     }
     return out.join('');
   };
 
   // ---------------------------------------------------------------- 10-8 별도 수험생
-  /** 별도실 학생 목록 (지정 순서: 반·번호) */
+  /** 별도실 학생 목록 (반·번호 순) */
   const spStudents = () => S.students().filter((x) => st().special.students[x.key] && st().special.students[x.key].room);
   const timeWith = (slot, extra) => { const t = slotTime(slot); return extra ? endWithExtra(t, extra) : t; };
-  /** 학생별 안내: 시험 교시마다 어디서, 몇 시까지 보는지 (A4 한 장에 2명) */
+  /** 학생별 안내 (한 장에 1명): 별도실에서 보는 교시 목록 + 개별 수험표 */
   function spGuide(x) {
-    const idx = byStudent();
-    const rows = S.slots().map((sl) => ({ sl, r: idx.get(`${x.key}|${sl.key}`) })).filter((y) => y.r && y.r.subject !== '미응시');
-    const sp = st().special.students[x.key];
-    return `<div class="sp-guide">
-      <div class="slip-head"><div class="slip-top"><span>${h(S.school() || '')}</span><b>${C.studentNo(x.grade, x.ban, x.num)} ${h(x.name)}</b></div><div class="slip-title">별도 시험 안내</div></div>
-      <p class="sp-guide-lead">${h(S.title())} · 지정 별도실: <b>${h(S.specialRoom(sp.room).name)}</b> · ${sp.mode === 'pick' ? '고른 교시만 별도실' : '시험 보는 모든 교시 별도실'}</p>
-      <table class="ptbl"><thead><tr><th>일시</th><th>과목</th><th>고사실</th><th>시험 시간</th><th>추가 시간</th></tr></thead>
-      <tbody>${rows.map(({ sl, r }) => `<tr class="${r.special ? 'sp-on' : ''}"><th>${h(U.fmtDateShort(slotDate(sl)))} ${sl.period}교시</th><td>${h(C.onlySubject(r.subject))}</td><td>${r.special ? `<b>${h(r.room)}</b>` : `${h(r.room)} (${r.seat}번)`}</td><td>${h(timeWith(sl, r.special ? r.extra : 0))}</td><td>${r.special && r.extra ? `+${r.extra}분` : '-'}</td></tr>`).join('')}</tbody></table>
-      <p class="p-note">※ 굵은 글씨 고사실(별도실)에서 시험을 봅니다. 자습 교시에는 자기 교실에서 자습합니다.</p></div>`;
+    const idx = byStudent(), sp = st().special.students[x.key], days = examDays(), periods = examPeriods(), slots = S.slots();
+    const rows = slots.map((sl) => ({ sl, r: idx.get(`${x.key}|${sl.key}`) })).filter((y) => y.r && y.r.special);
+    const roomName = S.specialRoom(sp.room).name;
+    const grid = periods.map((p) => `<tr><th>${p}교시</th>${days.map((d) => {
+      const sl = slots.find((y) => y.day === d && y.period === p), r = sl ? idx.get(`${x.key}|${sl.key}`) : null;
+      if (!r || r.subject === '미응시') return `<td class="wait">${r ? '자습' : '-'}${r ? `<small>${h(r.room)}</small>` : ''}</td>`;
+      return `<td><div class="s">${h(C.onlySubject(r.subject))}</div><div class="rm ${r.special ? 'sp' : 'acc'}">${h(r.room)}${r.special ? '(별)' : ''}${!r.special && r.seat != null ? ` · ${r.seat}번` : ''}</div><small>${h(slotTime(sl).replace(/\s/g, ''))}${r.special && r.extra ? ` (+${r.extra}분)` : ''}</small></td>`;
+    }).join('')}</tr>`).join('');
+    return `<div class="page fill spnotice" data-sheet="${h(`별도 안내 ${x.name}`)}">
+      ${sheetHead('별도 고사실 응시 안내', '아래 시간에는 소속 교실이 아니라 별도 고사실에서 시험을 봅니다.', [['학년·반·번호', `${x.grade}학년 ${h(x.ban)} ${x.num}번`], ['성명', h(x.name)], ['별도 고사실', h(roomName)], ['해당 교시', sp.mode === 'pick' ? `${rows.length}개 교시` : '모든 시험']], [1, 2])}
+      ${rows.length ? `<table class="ptbl sheet5 sp-rows"><colgroup><col style="width:10%"><col style="width:24%"><col><col style="width:18%"><col style="width:14%"></colgroup><thead><tr><th>연번</th><th>교시</th><th>과목</th><th>원고사실</th><th>답안지</th></tr></thead>
+        <tbody>${rows.map(({ sl, r }, k) => `<tr><td class="no">${k + 1}</td><td class="nm">${h(U.fmtDateShort(slotDate(sl)))} ${sl.period}교시</td><td>${h(C.onlySubject(r.subject))}${r.extra ? ` <small>(+${r.extra}분 → ${h((timeWith(sl, r.extra).split('~')[1] || '').trim())})</small>` : ''}</td><td class="acc">${h(r.origRoom || '')}</td><td></td></tr>`).join('')}</tbody></table>` : '<p class="p-note">아직 배치된 교시가 없습니다.</p>'}
+      <p class="p-note sp-notes">· 이 학생은 <b>원고사실 명단에도 그대로 올라 있습니다.</b> 명단 비고에 '별도'로 표시됩니다.<br>· 좌석배치도에는 나오지 않습니다. 그 교실에 앉지 않기 때문입니다.<br>· 시험이 끝나면 답안지를 원고사실 것과 합쳐 주세요.</p>
+      <div class="sp-ticket"><div class="sh-title small">개별 수험표</div><div class="sh-line sm">${x.grade}학년 ${h(x.ban)} ${x.num}번 ${h(x.name)} · 학번 ${C.studentNo(x.grade, x.ban, x.num)}</div>
+        <table class="ptbl sp-grid">${eqCols([12], days.length)}<thead><tr><th>교시</th>${days.map((d) => `<th>${d}일차<small>${h(U.fmtDateShort(st().dates[d - 1]))}</small></th>`).join('')}</tr></thead><tbody>${grid}</tbody></table>
+        <p class="p-note">고사실 뒤에 <b class="amber">(별)</b>이 붙은 교시는 별도 고사실에서 봅니다.</p></div></div>`;
   }
-  const pagesSpGuide = (list) => { const out = []; for (let i = 0; i < list.length; i += 2) out.push(`<div class="page sp-guides" data-sheet="${h(`별도 안내 ${list[i].name}`)}">${list.slice(i, i + 2).map(spGuide).join('')}</div>`); return out.join(''); };
-  /** 교시별 명렬: 교시마다 별도실에 오는 학생과 끝나는 시각 (감독용) */
+  const pagesSpGuide = (list) => list.map(spGuide).join('');
+  /** 교시별 명렬 (별도실마다 한 장): 감독용 */
   function pagesSpList() {
-    const rows = [];
-    S.slots().forEach((sl) => seatAll().filter((r) => r.slot === sl.key && r.special).sort((a, b) => a.roomIndex - b.roomIndex || a.seat - b.seat).forEach((r) => rows.push({ sl, r })));
-    if (!rows.length) return '';
-    const per = 24, out = [];
-    for (let p = 0; p < rows.length; p += per) {
-      const chunk = rows.slice(p, p + per);
-      out.push(`<div class="page fill" data-sheet="${h(`별도 명렬 ${p / per + 1}`)}">${pageHead('별도 고사실 교시별 명렬', h(S.title()))}
-        <table class="ptbl sp-list fill-main"><thead><tr><th>일시</th><th>별도실</th><th>좌석</th><th>학번</th><th>성명</th><th>과목</th><th>추가 시간</th><th>시험 시간</th><th>원래 고사실</th><th>감독 확인</th></tr></thead>
-        <tbody>${chunk.map(({ sl, r }) => `<tr><th>${h(U.fmtDateShort(slotDate(sl)))} ${sl.period}교시</th><td><b>${h(r.room)}</b></td><td>${r.seat}</td><td>${C.studentNo(r.grade, r.ban, r.num)}</td><td><b>${h(r.name)}</b></td><td>${h(C.onlySubject(r.subject))}</td><td>${r.extra ? `+${r.extra}분` : '-'}</td><td>${h(timeWith(sl, r.extra))}</td><td>${h(r.origRoom || '')}</td><td></td></tr>`).join('')}</tbody></table>
-        <div class="sign">감독교사 확인: ____________ (인)</div></div>`);
-    }
+    const out = [];
+    S.slots().forEach((sl) => {
+      for (let k = 1; k <= S.specialCount(); k++) {
+        const i = S.SPECIAL_BASE + k - 1;
+        const rows = seatAll().filter((r) => r.slot === sl.key && r.roomIndex === i).sort((a, b) => (a.ban === b.ban ? a.num - b.num : String(a.ban).localeCompare(String(b.ban), 'ko')));
+        if (!rows.length) continue;
+        const room = roomAt(i);
+        out.push(`<div class="page fill splist" data-sheet="${h(`별도 명렬 ${sl.day}일${sl.period}교시 ${room.name}`)}">
+          ${sheetHead('별도 고사실 명렬', '아래 학생들은 소속 고사실 명단에도 올라 있습니다. 시험이 끝나면 답안지를 원고사실 것과 합쳐 주세요.', [['시행', `${sl.day}일차 ${sl.period}교시<small>${h(U.fmtDateShort(slotDate(sl)))} ${h(slotTime(sl))}</small>`], ['별도 고사실', h(room.name)], ['인원', `${rows.length}명`], ['감독', '']], [1, 2])}
+          <table class="ptbl sheet5 sp-list2"><colgroup><col style="width:8%"><col style="width:15%"><col style="width:15%"><col><col style="width:14%"><col style="width:20%"><col style="width:11%"></colgroup><thead><tr><th>연번</th><th>학번</th><th>성명</th><th>과목</th><th>원고사실</th><th>비고</th><th>답안지</th></tr></thead>
+          <tbody>${rows.map((r, k) => `<tr><td class="no">${k + 1}</td><td>${C.studentNo(r.grade, r.ban, r.num)}</td><td class="nm">${h(r.name)}</td><td>${h(C.onlySubject(r.subject))}</td><td class="acc">${h(r.origRoom || '')}</td><td class="memo">${r.extra ? `+${r.extra}분 (~${h((timeWith(sl, r.extra).split('~')[1] || '').trim())})` : ''}</td><td></td></tr>`).join('')}</tbody></table></div>`);
+      }
+    });
     return out.join('');
   }
 
-  // ---------------------------------------------------------------- 9-7 문제지 봉투 라벨 (InitLabelData)
+  // ---------------------------------------------------------------- 9-7 문제지 봉투 라벨 (A4 가로 · 한 장에 하나)
   function labels() {
     const out = [];
     S.slots().forEach((slot) => {
@@ -303,33 +326,24 @@
     });
     return out;
   }
-  const labelBox = (l) => {
+  /** 스타일 A: 과목 크게 */
+  const labelCardA = (l) => {
     const code = st().subjectCodes[l.subject];
-    return `<div class="label-box">
-      <div class="lb-no">${S.school() ? `${h(S.school())} · ` : ''}No. ${l.n}</div>
-      <table><tr><th>일 시</th><td class="lb-when"><b>${h(U.fmtDate(slotDate(l.slot)))}</b><br>${l.slot.period}교시 <span>(${h(slotTime(l.slot))})</span></td></tr>
-      <tr><th>과 목</th><td><b>${h(C.onlySubject(l.subject))}</b>${code ? ` 【 ${h(code)} 】` : ''}</td></tr>
-      <tr><th>고사실</th><td>${h(l.room)}</td></tr>
-      <tr><th>응시분반</th><td>${h(l.classRoom)}</td></tr>
-      <tr><th>응시인원</th><td>${l.count}명</td></tr></table></div>`;
-  };
-  /** 봉투 라벨 B: A4 가로 한 장에 하나, 과목명 크게 */
-  const labelBig = (l) => {
-    const code = st().subjectCodes[l.subject];
-    return `<div class="page landscape labels-big" data-sheet="${h(`라벨 ${l.n}`)}"><div class="lbb">
-      <div class="lbb-top"><span>${h(S.school() || '')}</span><span>No. ${l.n}</span></div>
-      <div class="lbb-title">${h(S.title())}</div>
-      <div class="lbb-subj">${h(C.onlySubject(l.subject))}${code ? `<small>【 ${h(code)} 】</small>` : ''}</div>
-      <div class="lbb-when">${h(U.fmtDate(slotDate(l.slot)))} · ${l.slot.period}교시 <span>(${h(slotTime(l.slot))})</span></div>
-      <table class="lbb-tbl"><tr><th>고사실</th><td>${h(l.room)}</td><th>응시분반</th><td>${h(l.classRoom)}</td><th>응시인원</th><td>${l.count}명</td></tr></table>
+    return `<div class="page landscape labelpage" data-sheet="${h(`라벨 ${l.n}`)}"><div class="env-card">
+      <div class="env-title">${h(S.title())}</div>
+      <div class="env-row"><span>일시: ${h(U.fmtDate(slotDate(l.slot)))} (${l.slot.day}일차 ${l.slot.period}교시) ${h(slotTime(l.slot))}</span><span class="env-seq">연번 #${l.n}</span></div>
+      <div class="env-subj"><div class="env-subj-name">${h(C.onlySubject(l.subject))}</div>${code ? `<span class="env-code">【 ${h(code)} 】</span>` : ''}</div>
+      <div class="env-boxes"><div class="env-box"><span>고사실</span><strong class="big">${h(l.room)}</strong></div><div class="env-box"><span>응시분반</span><strong>${h(l.classRoom || '전체')}</strong></div><div class="env-box hl"><span>응시인원</span><strong class="big">${l.count}명</strong></div></div>
     </div></div>`;
   };
-  const pagesLabels = (list) => {
-    if (st().out.labelStyle === 'big') return list.map(labelBig).join('');
-    const out = [];
-    for (let i = 0; i < list.length; i += 2) out.push(`<div class="page labels" data-sheet="${h(`라벨 ${list[i].n}${list[i + 1] ? '-' + list[i + 1].n : ''}`)}">${list.slice(i, i + 2).map(labelBox).join('')}</div>`);
-    return out.join('');
+  /** 스타일 B: 표 */
+  const labelCardB = (l) => {
+    const code = st().subjectCodes[l.subject], subj = C.onlySubject(l.subject);
+    const grade = st().rows[0] ? `${C.val(st().rows[0].학년)}학년 ` : '';
+    const rows = [['일시', `${h(U.fmtDate(slotDate(l.slot)))} ${l.slot.period}교시 <small>${h(slotTime(l.slot))}</small>`, false], ['과목', code ? `${h(subj)} (${h(code)})` : h(subj), false], ['고사실', h(l.room), true], ['응시분반', `${grade}${h(subj)} - ${h(l.classRoom || '전체')}`, false], ['응시인원', `${l.count}명`, false]];
+    return `<div class="page landscape labelpage" data-sheet="${h(`라벨 ${l.n}`)}"><table class="env-tbl"><colgroup><col style="width:30%"><col></colgroup><tbody>${rows.map(([k, v, big]) => `<tr><th>${k}</th><td class="${big ? 'big' : ''}">${v}</td></tr>`).join('')}</tbody></table></div>`;
   };
+  const pagesLabels = (list) => list.map(st().out.labelStyle === 'table' ? labelCardB : labelCardA).join('');
 
   // ---------------------------------------------------------------- 화면
   const sel = (act, items, cur) => `<select class="input sm" data-change="${act}">${items.map(([v, l]) => `<option value="${h(v)}" ${String(v) === String(cur) ? 'selected' : ''}>${h(l)}</option>`).join('')}</select>`;
@@ -388,7 +402,7 @@
         break;
       case 'student': {
         const studs = S.students().filter((x) => x.ban === ui.ban);
-        const lay = ui.slipLayout || 'rows';
+        const lay = ui.slipLayout || 'grid';
         if (!studs.some((x) => x.key === ui.stu)) ui.stu = studs[0] ? studs[0].key : '';
         const one = studs.find((x) => x.key === ui.stu);
         ctrl = sel('o-ban', bans.map((b) => [b, b]), ui.ban) + sel('o-stu', studs.map((x) => [x.key, `${x.num}번 ${x.name}`]), ui.stu) +
@@ -402,12 +416,12 @@
       case 'label': {
         const ls = labels();
         const subs = st().evalSubjects;
-        ctrl = radios('o-lstyle', '라벨 모양', [['table', '표 (한 장에 2개)'], ['big', '과목 크게 (A4 가로 한 장에 1개)']], st().out.labelStyle);
+        ctrl = radios('o-lstyle', '라벨 모양', [['big', '스타일 A · 과목 크게'], ['table', '스타일 B · 표']], st().out.labelStyle);
         preview = `<div class="grid-2 top no-print-inner">
           <div class="card"><h3>과목코드 입력 <span class="muted">(선택)</span></h3><table class="tbl compact"><tbody>${subs.map((x) => `<tr><td>${h(x)}</td><td><input class="input sm" data-change="o-code" data-s="${h(x)}" value="${h(st().subjectCodes[x] || '')}"></td></tr>`).join('')}</tbody></table></div>
           <div class="card"><h3>문제지 봉투 라벨 데이터 <span class="muted">${ls.length}개</span></h3><div class="table-wrap mid"><table class="tbl compact selectable"><thead><tr><th><input type="checkbox" data-change="o-lsel-all" ${ui.labelSel.size === ls.length && ls.length ? 'checked' : ''}></th><th>연번</th><th>일차</th><th>교시</th><th>과목</th><th>고사실</th><th>응시분반</th><th>인원</th></tr></thead>
           <tbody>${ls.map((l) => `<tr><td><input type="checkbox" data-change="o-lsel" data-n="${l.n}" ${ui.labelSel.has(l.n) ? 'checked' : ''}></td><td>${l.n}</td><td>${l.slot.day}일차</td><td>${l.slot.period}교시</td><td>${h(C.onlySubject(l.subject))}</td><td>${h(l.room)}</td><td>${h(l.classRoom)}</td><td>${l.count}</td></tr>`).join('')}</tbody></table></div></div>
-        </div>` + pagesLabels(ls.slice(0, st().out.labelStyle === 'big' ? 1 : 2));
+        </div>` + pagesLabels(ls.slice(0, 1));
         scopes = [['slot', `선택한 라벨 (${ui.labelSel.size}개)`], ['every', `전체 라벨 (${ls.length}개)`]];
         break;
       }

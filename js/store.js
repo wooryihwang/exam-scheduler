@@ -35,7 +35,7 @@
     seatCols: 5,
     // 출력물 설정: 좌석표(줄 수 0=자동, 채우는 순서 col=세로 먼저|row=가로 먼저, 명렬표), 학생별 시간표(유의사항·좌석번호),
     // 봉투 라벨 모양(table|big), 전체 시간표 용지(A4|B4), 분반 이름 표기(num 1반|neis 편성현황 그대로|ganada 가나다|abc ABC|none 안 씀)
-    out: { seatRows: 0, seatOrder: 'col', seatList: true, slipNoteOn: true, slipNote: DEFAULT_SLIP_NOTE, slipSeat: true, labelStyle: 'table', paper: 'A4', secLabel: 'num' },
+    out: { seatRows: 0, seatOrder: 'col', seatList: true, slipNoteOn: true, slipNote: DEFAULT_SLIP_NOTE, slipSeat: true, labelStyle: 'big', paper: 'A4', secLabel: 'num' },
     plLocks: [],          // 학생 배치에서 잠근 교시 (자동 배치가 바꾸지 않음)
     subjectCodes: {},
     notices: [],

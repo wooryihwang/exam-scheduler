@@ -149,7 +149,7 @@
           <div class="set-grid">
             <label>좌석표 번호 순서${opt('seatOrder', out.seatOrder, [['col', '세로 먼저', ''], ['row', '가로 먼저', '']])}</label>
             <label>좌석표 모양${opt('seatList', out.seatList ? '1' : '0', [['1', '좌석 + 명렬', ''], ['0', '좌석만', '']])}</label>
-            <label>봉투 라벨${opt('labelStyle', out.labelStyle, [['table', '표 (2개)', ''], ['big', '과목 크게', '']])}</label>
+            <label>봉투 라벨${opt('labelStyle', out.labelStyle, [['big', '스타일 A · 과목 크게', ''], ['table', '스타일 B · 표', '']])}</label>
             <label>전체 시간표 용지${opt('paper', out.paper, [['A4', 'A4', ''], ['B4', 'B4', '']])}</label>
             <label>학생별 시간표${opt('slipSeat', out.slipSeat ? '1' : '0', [['1', '좌석번호 표시', ''], ['0', '좌석번호 숨김', '']])}</label>
             <label>하단 유의사항${opt('slipNoteOn', out.slipNoteOn ? '1' : '0', [['1', '인쇄', ''], ['0', '인쇄 안 함', '']])}</label>
@@ -193,9 +193,18 @@
       U.download(`고사배치_${S.currentProject().name}_${stamp}.json`, S.exportJSON());
     },
     async 'reset-all'() {
-      const name = S.currentProject().name;
-      if (!(await U.confirm(`「${name}」 작업 공간을 삭제할까요?\n\n※ 되돌릴 수 없습니다. 다른 학년 작업은 그대로 남습니다. 필요하면 먼저 [백업 저장]을 하세요.`, '현재 작업 삭제', '삭제'))) return;
-      S.deleteCurrentProject(); go('roster'); U.toast(`「${name}」을(를) 삭제하였습니다.`);
+      const g = S.currentGrade(), name = S.currentProject().name;
+      const has = S.state.rows.length > 0;
+      const v = await U.modal({
+        title: `${g ? g + '학년' : '현재'} 작업 초기화`,
+        body: `<p><b>「${h(name)}」</b> 작업만 비웁니다. 학생편성현황·시간표·배치·응시현황·고사실·시간 설정이 모두 지워지고, <b>다른 학년 작업은 그대로</b> 남습니다.</p>
+          <p class="hint">※ 되돌릴 수 없습니다. 필요하면 <b>파일 저장 후 초기화</b>를 누르세요. (단계를 확정할 때 남은 스냅샷은 '자동 저장 &amp; 스냅샷'에서 복구할 수 있습니다)</p>`,
+        buttons: [{ label: '취소', value: null }, ...(has ? [{ label: '파일 저장 후 초기화', value: 'backup' }] : []), { label: '초기화', value: 'ok', cls: 'danger-text ghost' }],
+      });
+      if (!v) return;
+      if (v === 'backup') globalActions.backup();
+      S.resetAll(); go('roster');
+      U.toast(`${g ? g + '학년' : '현재'} 작업을 초기화하였습니다.`, 'ok');
     },
     undo() { doUndo(false); },
     'proj-new'() { S.newProject(); go('roster'); U.toast('새 작업 공간을 만들었습니다. 학생편성현황을 불러오면 학년 이름이 붙습니다.', 'ok'); },
