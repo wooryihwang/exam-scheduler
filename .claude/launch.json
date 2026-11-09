@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "exam-scheduler",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["serve.py", "8766"],
+      "port": 8766
+    }
+  ]
+}

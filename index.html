@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>고사시간표 시스템 - Smart Scheduler</title>
+  <meta name="theme-color" content="#005691">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23005691'/%3E%3Cpath d='M32 12l5 12 13 1-10 8 3 13-11-7-11 7 3-13-10-8 13-1z' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700&display=swap">
+  <script>
+    // 항상 최신 파일을 불러온다 (브라우저가 예전 파일을 캐시해 새 기능이 안 보이는 문제 방지)
+    window.__v = Date.now();
+    document.write('<link rel="stylesheet" href="css/style.css?v=' + __v + '">');
+    document.write('<link rel="stylesheet" href="css/theme.css?v=' + __v + '">');
+  </script>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar no-print">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3l2.2 5.2 5.6.5-4.3 3.7 1.3 5.5L12 15l-4.8 2.9 1.3-5.5L4.2 8.7l5.6-.5z"/></svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-title">고사시간표 시스템</div>
+          <div class="brand-en">SMART SCHEDULER</div>
+        </div>
+        <span class="brand-dot" id="brand-dot" title="현재 작업 학년 색"></span>
+      </div>
+      <div id="projects" class="projects"></div>
+      <nav id="nav" class="nav"></nav>
+      <div class="side-foot">
+        <button class="btn snap" data-act="snapshot" title="단계를 확정할 때마다 브라우저 안에 자동 저장되는 스냅샷을 보고 복구합니다">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5a4 4 0 0 1 .5 7.97"/><path d="M12 12v8M9 17l3 3 3-3"/></svg>
+          자동 저장 &amp; 스냅샷
+        </button>
+        <div class="foot-row">
+          <button class="btn file" data-act="backup" title="현재 학년 작업 전체를 JSON 파일로 내려받습니다">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M8 11l4 4 4-4"/><path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/></svg>
+            파일 저장
+          </button>
+          <label class="btn file" title="저장한 JSON 작업 파일을 불러옵니다">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/></svg>
+            파일 열기<input type="file" accept=".json" id="restore-file" hidden>
+          </label>
+        </div>
+        <div class="foot-row2">
+          <button class="btn text" data-act="settings" title="학교 이름, 분반 이름 표기, 출력물 기본값">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+            설정
+          </button>
+          <button class="btn text danger-text" data-act="reset-all" title="현재 학년 작업을 지웁니다 (다른 학년은 그대로)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+            초기화
+          </button>
+        </div>
+        <p class="side-note">데이터는 이 브라우저에만 저장되며 서버로 전송되지 않습니다.</p>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="topbar no-print">
+        <button class="btn ghost sm menu-btn" data-act="toggle-nav" aria-label="메뉴">☰</button>
+        <div class="top-seg" id="top-seg"></div>
+        <div class="crumbs" id="crumbs"></div>
+        <div class="progress" id="progress"></div>
+      </header>
+      <section id="view" class="view"></section>
+    </main>
+  </div>
+  <div id="print-root" class="print-root"></div>
+  <div id="modal-root"></div>
+  <div id="toast-root" class="toast-root no-print"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script>
+    ['core', 'util', 'store', 'sample', 'views', 'special', 'outputs', 'main']
+      .forEach((f) => document.write('<script src="js/' + f + '.js?v=' + window.__v + '"><\/script>'));
+  </script>
+</body>
+</html>
