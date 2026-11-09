@@ -15,7 +15,7 @@
     ['label', '10-7 봉투 라벨'],
     ['sp', '10-8 별도 수험생'],
   ];
-  const ui = { tab: 'all', slot: '', room: '', ban: '', day: '', student: '', labelSel: new Set() };
+  const ui = { tab: 'all', slot: '', room: '', ban: '', day: '', student: '', lbl: 0 };
 
   // ---------------------------------------------------------------- 데이터 도우미
   /** 출력용 응시현황 (확정 응시현황 + 8. 별도 고사실 지정) */
@@ -416,13 +416,19 @@
       case 'label': {
         const ls = labels();
         const subs = st().evalSubjects;
-        ctrl = radios('o-lstyle', '라벨 모양', [['big', '스타일 A · 과목 크게'], ['table', '스타일 B · 표']], st().out.labelStyle);
-        preview = `<div class="grid-2 top no-print-inner">
-          <div class="card"><h3>과목코드 입력 <span class="muted">(선택)</span></h3><table class="tbl compact"><tbody>${subs.map((x) => `<tr><td>${h(x)}</td><td><input class="input sm" data-change="o-code" data-s="${h(x)}" value="${h(st().subjectCodes[x] || '')}"></td></tr>`).join('')}</tbody></table></div>
-          <div class="card"><h3>문제지 봉투 라벨 데이터 <span class="muted">${ls.length}개</span></h3><div class="table-wrap mid"><table class="tbl compact selectable"><thead><tr><th><input type="checkbox" data-change="o-lsel-all" ${ui.labelSel.size === ls.length && ls.length ? 'checked' : ''}></th><th>연번</th><th>일차</th><th>교시</th><th>과목</th><th>고사실</th><th>응시분반</th><th>인원</th></tr></thead>
-          <tbody>${ls.map((l) => `<tr><td><input type="checkbox" data-change="o-lsel" data-n="${l.n}" ${ui.labelSel.has(l.n) ? 'checked' : ''}></td><td>${l.n}</td><td>${l.slot.day}일차</td><td>${l.slot.period}교시</td><td>${h(C.onlySubject(l.subject))}</td><td>${h(l.room)}</td><td>${h(l.classRoom)}</td><td>${l.count}</td></tr>`).join('')}</tbody></table></div></div>
-        </div>` + pagesLabels(ls.slice(0, 1));
-        scopes = [['slot', `선택한 라벨 (${ui.labelSel.size}개)`], ['every', `전체 라벨 (${ls.length}개)`]];
+        if (!ls.some((l) => l.n === ui.lbl)) ui.lbl = ls[0] ? ls[0].n : 0;
+        const cur = ls.find((l) => l.n === ui.lbl);
+        ctrl = radios('o-lstyle', '라벨 모양', [['big', '스타일 A · 과목 크게'], ['table', '스타일 B · 표']], st().out.labelStyle) +
+          (ls.length ? sel('o-lbl', ls.map((l) => [l.n, `${l.n}. ${l.slot.day}일차 ${l.slot.period}교시 · ${C.onlySubject(l.subject)} · ${l.room}`]), ui.lbl) : '');
+        preview = `<div class="label-layout no-print-inner">
+          <div class="card code-card"><h3>과목코드 입력 <span class="muted">(선택)</span></h3>
+            <p class="hint">과목마다 봉투 라벨에 함께 인쇄할 과목코드를 적습니다. 비워 두면 과목명만 인쇄됩니다.</p>
+            <table class="tbl compact code-tbl"><tbody>${subs.map((x) => `<tr><td>${h(x)}</td><td><input class="input sm" data-change="o-code" data-s="${h(x)}" value="${h(st().subjectCodes[x] || '')}" placeholder="예: 1234"></td></tr>`).join('')}</tbody></table>
+            <div class="code-save"><button class="btn primary sm" data-act="o-code-save" title="적어 둔 과목코드를 모두 저장하고 오른쪽 미리보기를 새로 그립니다">💾 과목코드 입력 저장</button></div>
+          </div>
+          <div class="label-preview">${cur ? pagesLabels([cur]) : '<div class="empty"><p>인쇄할 라벨이 없습니다. 시간표와 고사장 배치를 먼저 확정하세요.</p></div>'}</div>
+        </div>`;
+        scopes = [['cur', cur ? `미리보기 라벨 1개 (${cur.room})` : '미리보기 라벨'], ['every', `전체 라벨 (${ls.length}개)`]];
         break;
       }
       case 'sp': {
@@ -449,7 +455,7 @@
     return { ctrl, preview, printBtns: outBar, scopeLabel };
   }
   /** 라벨 '선택' 범위는 하나 이상 골라야 함 */
-  const scopeReady = () => { if (ui.tab === 'label' && ui.scope === 'slot' && !ui.labelSel.size) { U.toast('라벨 목록에서 저장·출력할 라벨을 선택하세요.', 'error'); return false; } return true; };
+  const scopeReady = () => { if (ui.tab === 'label' && !labels().length) { U.toast('인쇄할 라벨이 없습니다.', 'error'); return false; } return true; };
   const btn = (act, label) => `<button class="btn outline sm" data-act="${act}">${h(label)}</button>`;
 
   /** 인쇄 대상 페이지 HTML */
@@ -473,7 +479,7 @@
         return bans.map((b) => examDays().map((d) => pageClass(b, d)).join('')).join('');
       case 'student': return pagesStudents(scope === 'one' ? S.students().filter((x) => x.key === ui.stu) : scope === 'slot' ? S.students().filter((x) => x.ban === ui.ban) : S.students());
       case 'sp': return (ui.spMode || 'guide') === 'list' ? pagesSpList() : pagesSpGuide(scope === 'cur' ? spStudents().filter((x) => x.key === ui.spStu) : spStudents());
-      case 'label': { const ls = labels(); return pagesLabels(scope === 'slot' ? ls.filter((l) => ui.labelSel.has(l.n)) : ls); }
+      case 'label': { const ls = labels(); return pagesLabels(scope === 'cur' ? ls.filter((l) => l.n === ui.lbl) : ls); }
     }
     return '';
   }
@@ -589,6 +595,16 @@
     finally { r.host.remove(); prog.remove(); pdfBusy = false; }
   }
 
+  // 10-7 미리보기: 오른쪽 칸 너비에 맞게 라벨 쪽을 축소
+  function fitLabelPreview() {
+    const box = document.querySelector('.label-preview'), page = box && box.querySelector('.page');
+    if (!box || !page) return;
+    box.style.zoom = '';
+    const avail = box.clientWidth, w = page.getBoundingClientRect().width;
+    if (w > avail + 1) box.style.zoom = String(Math.max(0.4, Math.floor((avail / w) * 100) / 100));
+  }
+  window.addEventListener('resize', fitLabelPreview);
+
   function doPrint(scope) {
     const html = printHtml(scope);
     if (!html) return U.toast('인쇄할 내용이 없습니다.', 'error');
@@ -607,6 +623,7 @@
       if (!st().confirmed.seats) return stepHead(10, '인쇄 및 출력물') + needFirst('먼저 응시현황(좌석번호)을 확정하세요.', 'seats', '9. 응시현황');
       const { ctrl, preview, printBtns, scopeLabel } = controlsAndPreview();
       ui.scopeLabel = scopeLabel;
+      if (ui.tab === 'label') requestAnimationFrame(fitLabelPreview);
       return stepHead(10, (TABS.find(([k]) => k === ui.tab) || [])[1] || '인쇄 및 출력물', '고사 운영에 필요한 시간표와 명단을 미리 봅니다. 범위를 고른 뒤 <b>📊 엑셀 저장</b> · <b>📄 PDF 저장</b> · <b>🖨 출력</b> 중 하나를 누르세요.') +
         `<div class="tabs">${TABS.map(([k, l]) => `<button class="tab ${ui.tab === k ? 'on' : ''}" data-act="o-tab" data-tab="${k}">${h(l)}</button>`).join('')}</div>
         <div class="toolbar">${ctrl}<span class="spacer"></span>${printBtns}</div>
@@ -618,8 +635,9 @@
       'out-excel'() { if (!scopeReady()) return; exportExcel(ui.scope, ui.scopeLabel); },
       'out-pdf'() { if (!scopeReady()) return; exportPdf(ui.scope, ui.scopeLabel); },
       'print-cur'() { doPrint('cur'); },
-      'print-slot'() { if (ui.tab === 'label' && !ui.labelSel.size) return U.toast('인쇄할 라벨을 선택하세요.', 'error'); doPrint('slot'); },
+      'print-slot'() { doPrint('slot'); },
       'print-every'() { doPrint('every'); },
+      'o-code-save'() { document.querySelectorAll('.code-card input[data-change="o-code"]').forEach((el) => S.setSubjectCode(el.dataset.s, el.value.trim())); rerender(); U.toast('과목코드를 저장하였습니다.', 'ok'); },
       async 'o-note-edit'() {
         let text = st().out.slipNote;
         const v = await U.modal({
@@ -651,8 +669,7 @@
       'o-spmode'(el) { ui.spMode = el.value; rerender(); },
       'o-spstu'(el) { ui.spStu = el.value; rerender(); },
       'o-code'(el) { S.setSubjectCode(el.dataset.s, el.value.trim()); },
-      'o-lsel'(el) { const n = +el.dataset.n; if (el.checked) ui.labelSel.add(n); else ui.labelSel.delete(n); rerender(); },
-      'o-lsel-all'(el) { ui.labelSel = el.checked ? new Set(labels().map((l) => l.n)) : new Set(); rerender(); },
+      'o-lbl'(el) { ui.lbl = +el.value; rerender(); },
     },
   };
 
