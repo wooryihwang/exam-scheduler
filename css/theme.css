@@ -498,3 +498,6 @@ body[data-grade="3"] .page { --p-accent: #9b1c1c; }
 /* 10-8 개별 수험표 소제목·표 너비 */
 .sp-ticket .sh-title { color: var(--p-accent); font-weight: 900; }
 .sp-ticket .ptbl.sp-grid { width: 100%; table-layout: fixed; }
+/* 10-1: 고사실별 인원은 검정, 응시계만 붉게 (examtable과 동일) */
+.page.allpage .ptbl.all .p-cnt { color: #334155; font-weight: 700; }
+.page.allpage .ptbl.all .p-total { color: var(--p-accent); font-weight: 900; }
