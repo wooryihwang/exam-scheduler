@@ -205,3 +205,57 @@ body[data-grade] .proj-select { box-shadow: inset 3px 0 0 var(--navy); }
 .toolbar .inline:not(.chk) { background: var(--cap-bg); border: 1px solid var(--cap-line); border-radius: 9px; padding: 3px 4px 3px 10px; }
 .toolbar .inline:not(.chk) > .input { background: #fff; }
 .seat-list-title, .room-tools > span:first-child { color: var(--cap); }
+
+/* ------------------------------------------------------------ 10-4 좌석 배치표 (examtable 형태)
+   작은 시험 이름 · 학년색 큰 제목 · 5칸 정보표 · 짙은 교탁 막대 · 열 머리글 · 왼쪽에 큰 좌석번호가 있는 카드 · 두 단 명렬표 */
+.page { --p-accent: var(--navy); }
+.page.seatpage { --p-accent: var(--navy); }
+.seat-head { text-align: center; margin-bottom: 3mm; }
+.seat-head .p-school { margin-bottom: 1mm; }
+.seat-head .sh-sub { font-size: 11pt; font-weight: 600; color: #555; letter-spacing: .02em; }
+.seat-head .sh-title { font-family: 'Pretendard Variable', Pretendard, 'Malgun Gothic', sans-serif; font-size: 25pt; font-weight: 900; color: var(--p-accent); letter-spacing: -.01em; line-height: 1.25; margin-top: .5mm; }
+.page .ptbl.seat-info { width: 100%; border-collapse: collapse; border: 1.5px solid #6b7790; margin: 0 0 4mm; table-layout: fixed; }
+.page .ptbl.seat-info thead th { background: #f1f3f6; color: #111; font-weight: 800; font-size: 11pt; padding: 1.8mm; border: 1px solid #b9c1cd; text-align: center; }
+.page .ptbl.seat-info td { font-size: 13pt; font-weight: 700; text-align: center; padding: 2mm; border: 1px solid #b9c1cd; color: #111; background: #fff; }
+.page .ptbl.seat-info td.acc { color: var(--p-accent); font-weight: 900; }
+.page .ptbl.seat-info th:nth-child(1), .page .ptbl.seat-info td:nth-child(1) { width: 24%; }
+.page .ptbl.seat-info th:nth-child(2), .page .ptbl.seat-info td:nth-child(2) { width: 14%; }
+.page .ptbl.seat-info th:nth-child(3), .page .ptbl.seat-info td:nth-child(3) { width: 16%; }
+.page .ptbl.seat-info th:nth-child(5), .page .ptbl.seat-info td:nth-child(5) { width: 16%; }
+.page .podium.bar { width: 66%; background: #1e293b; color: #fff; border: 0; border-radius: 1.8mm; padding: 2.2mm; font-size: 12pt; font-weight: 800; letter-spacing: .25em; margin: 1mm auto 1.5mm; }
+.seat-grid.cards { border-collapse: separate; border-spacing: 2mm 2mm; margin-top: 0; table-layout: fixed; }
+.seat-grid.cards th.col-head { font-size: 10.5pt; color: #4b5563; font-weight: 800; padding: 0 0 .3mm; border: 0; height: auto; text-align: center; background: none; }
+.page .seat-grid.cards td { border: 1.6px solid #1f2937; border-radius: 1.6mm; padding: 0; vertical-align: middle; height: var(--seat-h, 14mm); overflow: hidden; background: #fff; }
+.seat-card { display: flex; align-items: stretch; height: var(--seat-h, 14mm); }
+.seat-card .seat-no { flex: 0 0 34%; display: flex; align-items: center; justify-content: center; font-size: 17pt; font-weight: 900; color: var(--p-accent); border-right: 1.4px solid #1f2937; line-height: 1; }
+.seat-card .seat-who { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.15; padding: 0 1mm; }
+.seat-card .seat-id { font-size: 11pt; font-weight: 800; color: #111; }
+.seat-card .seat-name { font-size: 12.5pt; font-weight: 700; color: #111; margin: 0; }
+.seat-card .seat-away { font-size: 8.5pt; }
+.page .seat-grid.cards td.empty-seat { border: 1.4px dashed #cbd5e1; background: #fafafa; }
+.page .seat-grid.cards td.empty-seat.blank { border-color: transparent; background: none; }
+.seat-grid.cards td.empty-seat .seat-no { color: #cbd5e1; border-right-color: #e5e7eb; }
+.page .seat-grid.cards td.away-seat { border: 1.4px dashed #c0392b; background: #fdf1f0; }
+.seat-grid.cards.small .seat-no { font-size: 13pt; }
+.seat-grid.cards.small .seat-id { font-size: 9.5pt; }
+.seat-grid.cards.small .seat-name { font-size: 11pt; }
+.seat-grid.cards.small th.col-head { font-size: 9.5pt; }
+.seat-lists { display: grid; grid-template-columns: repeat(var(--groups, 2), 1fr); gap: 3mm; margin-top: 3.5mm; align-items: start; }
+.page .ptbl.seat-list2 { width: 100%; border-collapse: collapse; border: 1px solid #b9c1cd; table-layout: fixed; }
+.page .ptbl.seat-list2 th { background: var(--p-navy); color: #fff; font-size: 9pt; font-weight: 800; padding: .9mm .5mm; border: 1px solid #3d527d; text-align: center; }
+.page .ptbl.seat-list2 td { font-size: 9pt; padding: .55mm .8mm; height: auto; line-height: 1.25; text-align: center; border: 1px solid #d4d9e2; color: #222; }
+.page .ptbl.seat-list2 tr:nth-child(even) td { background: #f7f8fa; }
+.page .ptbl.seat-list2 td.nm { font-weight: 700; }
+.page .ptbl.seat-list2 td.acc { color: var(--p-accent); font-weight: 800; }
+.page .ptbl.seat-list2 td.away { color: #c0392b; }
+.page .ptbl.seat-list2 td.memo { font-size: 8pt; color: #555; }
+.page .ptbl.seat-list2 tr.pad td { color: transparent; }
+.page .ptbl.seat-list2 th:nth-child(1), .page .ptbl.seat-list2 td:nth-child(1) { width: 12%; }
+.page .ptbl.seat-list2 th:nth-child(2), .page .ptbl.seat-list2 td:nth-child(2) { width: 22%; }
+.page .ptbl.seat-list2 th:nth-child(4), .page .ptbl.seat-list2 td:nth-child(4) { width: 14%; }
+.page .ptbl.seat-list2 th:nth-child(5), .page .ptbl.seat-list2 td:nth-child(5) { width: 22%; }
+/* 화면 미리보기에서 학년 색을 그대로 쓰고, 인쇄에서도 색이 나오게 */
+body[data-grade="1"] .page { --p-accent: #15643a; }
+body[data-grade="2"] .page { --p-accent: #005691; }
+body[data-grade="3"] .page { --p-accent: #9b1c1c; }
+.page.seatpage .ptbl.seat-info, .page.seatpage .seat-card, .page.seatpage .podium.bar, .page.seatpage .ptbl.seat-list2 th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }

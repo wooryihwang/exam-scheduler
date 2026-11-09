@@ -157,31 +157,32 @@
     const o = st().out;
     const g = C.seatGrid(maxSeat, st().seatCols, o.seatOrder, Number(o.seatRows) || 0);
     const bySeat = new Map(list.map((r) => [r.seat, r]));
-    const grid = g.error ? `<p class="bad-text">${h(g.error)}</p>` : `<table class="seat-grid fill-main">${g.grid.map((line) => `<tr>${line.map((n) => {
+    const colHead = `<thead><tr>${Array.from({ length: g.cols || st().seatCols }, (_, k) => `<th class="col-head">${k + 1}열</th>`).join('')}</tr></thead>`;
+    const grid = g.error ? `<p class="bad-text">${h(g.error)}</p>` : `<table class="seat-grid fill-main">${colHead}<tbody>${g.grid.map((line) => `<tr>${line.map((n) => {
       const r = bySeat.get(n), a = away.get(n);
-      if (r) return `<td><div class="seat-no">${n}</div><div class="seat-id">${C.studentNo(r.grade, r.ban, r.num)}</div><div class="seat-name">${h(r.name)}</div></td>`;
-      if (a) return `<td class="away-seat"><div class="seat-no">${n}</div><div class="seat-id">${C.studentNo(a.grade, a.ban, a.num)} ${h(a.name)}</div><div class="seat-away">→ ${h(a.room)} 응시</div></td>`;
-      return n ? `<td class="empty-seat"><div class="seat-no">${n}</div><div class="seat-away">빈자리</div></td>` : '<td class="empty-seat"></td>';
-    }).join('')}</tr>`).join('')}</table>`;
+      if (r) return `<td><div class="seat-card"><div class="seat-no">${n}</div><div class="seat-who"><div class="seat-id">${C.studentNo(r.grade, r.ban, r.num)}</div><div class="seat-name">${h(r.name)}</div></div></div></td>`;
+      if (a) return `<td class="away-seat"><div class="seat-card"><div class="seat-no">${n}</div><div class="seat-who"><div class="seat-id">${C.studentNo(a.grade, a.ban, a.num)} ${h(a.name)}</div><div class="seat-away">→ ${h(a.room)} 응시</div></div></div></td>`;
+      return n ? `<td class="empty-seat"><div class="seat-card"><div class="seat-no">${n}</div><div class="seat-who"></div></div></td>` : '<td class="empty-seat blank"></td>';
+    }).join('')}</tr>`).join('')}</tbody></table>`;
     const blanks = g.grid ? g.grid.flat().filter((n) => !n).length : 0;
     const gridRows = g.grid ? g.grid.length : 0;
     // 명렬표: 좌석번호 순 (별도실로 옮긴 학생도 원래 자리에 표시)
     const people = [...list.map((r) => ({ seat: r.seat, r })), ...[...away].map(([seat, r]) => ({ seat, r, away: true }))].sort((a, b) => a.seat - b.seat);
-    const groups = people.length > 36 ? 4 : 3;
+    const groups = people.length > 40 ? 3 : 2;
     const per = Math.max(1, Math.ceil(people.length / groups));
     const colsOf = Array.from({ length: groups }, (_, k) => people.slice(k * per, (k + 1) * per));
     const notes = (blanks ? 1 : 0) + (away.size ? 1 : 0);
-    const listMm = people.length && o.seatList ? 13 + per * 5.4 : 0;
+    const listMm = people.length && o.seatList ? 12 + per * 4.9 : 0;
     // A4 297mm − 위아래 여백 28 − 제목 23 − 정보표 26 − 교탁 15 − 표 사이 8 − 주석 − 명렬표 (모두 여백 포함, mm)
     const avail = 297 - 28 - 25 - 26 - 15 - 8 - notes * 9 - listMm - 8;
     const seatH = gridRows ? Math.max(9, Math.min(22, (avail - (gridRows + 1) * 2.5) / gridRows)) : 22;
-    const listTbl = people.length && o.seatList ? `<div class="seat-list-wrap"><div class="seat-list-title">명렬표 <small>(좌석번호 순)</small></div>
-      <table class="ptbl seat-list"><thead><tr>${colsOf.map(() => '<th>좌석</th><th>학번</th><th>성명</th>').join('')}</tr></thead>
-      <tbody>${Array.from({ length: per }, (_, k) => `<tr>${colsOf.map((c) => { const x = c[k]; return x ? `<td>${x.seat}</td><td>${C.studentNo(x.r.grade, x.r.ban, x.r.num)}</td><td class="${x.away ? 'away' : ''}">${h(x.r.name)}${x.away ? ` <small>→ ${h(x.r.room)}</small>` : ''}</td>` : '<td></td><td></td><td></td>'; }).join('')}</tr>`).join('')}</tbody></table></div>` : '';
-    return `<div class="page fill" data-sheet="${h(`${slot.day}일${slot.period}교시 ${room.name}`)}">${pageHead('좌석 배치표', h(S.title()))}
-      <table class="ptbl info"><tr><th>시행일</th><td>${h(U.fmtDate(slotDate(slot)))}</td><th>교시</th><td>${slot.period}교시${extraNote(slot, i)}</td><th>고사실</th><td>${h(room.name)}</td></tr>
-      <tr><th>과목</th><td colspan="3">${h(c.kind === 'wait' ? '대기(자습)' : c.subject || '')}</td><th>인원</th><td>${list.length}명</td></tr></table>
-      <div class="podium top">교 탁 (앞)</div>${grid.replace('<table class="seat-grid fill-main">', `<table class="seat-grid with-list ${seatH < 21.9 ? 'compact' : ''}" style="--seat-h:${seatH.toFixed(1)}mm">`)}${listTbl}${blanks ? `<p class="p-note">※ 점선 칸 ${blanks}개는 ${st().seatCols}열 × ${g.rows}줄 책상 중 응시자가 없는 자리입니다. (열의 수는 위쪽에서 바꿀 수 있습니다)</p>` : ''}${away.size ? `<p class="p-note">※ 별도실로 옮긴 학생 자리 ${away.size}개는 비워 두었습니다.</p>` : ''}</div>`;
+    const listTbl = people.length && o.seatList ? `<div class="seat-lists" style="--groups:${groups}">${colsOf.map((c, gi) => `<table class="ptbl seat-list2"><thead><tr><th>연번</th><th>학번</th><th>성명</th><th>좌석</th><th>비고</th></tr></thead>
+      <tbody>${Array.from({ length: per }, (_, k) => { const x = c[k]; return x ? `<tr><td>${gi * per + k + 1}</td><td>${C.studentNo(x.r.grade, x.r.ban, x.r.num)}</td><td class="nm ${x.away ? 'away' : ''}">${h(x.r.name)}</td><td class="acc">${x.seat}</td><td class="memo">${x.away ? `→ ${h(x.r.room)}` : ''}</td></tr>` : '<tr class="pad"><td></td><td></td><td></td><td></td><td></td></tr>'; }).join('')}</tbody></table>`).join('')}</div>` : '';
+    return `<div class="page fill seatpage" data-sheet="${h(`${slot.day}일${slot.period}교시 ${room.name}`)}">
+      <div class="seat-head">${schoolLine()}<div class="sh-sub">${h(S.title())}</div><div class="sh-title">고사실 좌석배치도</div></div>
+      <table class="ptbl seat-info"><thead><tr><th>시행일</th><th>교시</th><th>고사실</th><th>과목(단위)</th><th>응시인원</th></tr></thead>
+      <tbody><tr><td>${h(U.fmtDate(slotDate(slot)))}</td><td>${slot.period}교시${extraNote(slot, i)}</td><td class="acc">${h(room.name)}</td><td>${h(c.kind === 'wait' ? '대기(자습)' : c.subject || '')}</td><td class="acc">${list.length}명</td></tr></tbody></table>
+      <div class="podium top bar">교 탁 (앞)</div>${grid.replace('<table class="seat-grid fill-main">', `<table class="seat-grid cards with-list ${seatH < 14 ? 'small' : ''}" style="--seat-h:${seatH.toFixed(1)}mm">`)}${listTbl}${blanks ? `<p class="p-note">※ 점선 칸 ${blanks}개는 ${st().seatCols}열 × ${g.rows}줄 책상 중 응시자가 없는 자리입니다. (열의 수는 위쪽에서 바꿀 수 있습니다)</p>` : ''}${away.size ? `<p class="p-note">※ 별도실로 옮긴 학생 자리 ${away.size}개는 비워 두었습니다.</p>` : ''}</div>`;
   }
 
   // ---------------------------------------------------------------- 9-5 학급별 고사시간표
