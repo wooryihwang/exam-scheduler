@@ -355,7 +355,7 @@
     }),
     defaultTitle() {
       const r = state.rows[0];
-      return r ? `${r.학년도}학년도 ${C.val(r.학년)}학년 ${r.학기}학기 정기고사` : '정기고사';
+      return r ? `${r.학년도}학년도 ${C.val(r.학년)}학년 ${r.학기}학기 지필평가` : '지필평가';
     },
     title() { return state.title || S.defaultTitle(); },
 

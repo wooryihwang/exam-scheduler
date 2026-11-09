@@ -104,7 +104,7 @@
         <tr class="r2"><td class="p-time">${h(slotTime(slot).replace(/\s/g, ''))}</td>${cells.map((c, k) => `<td class="p-cnt ${rooms[k].i >= S.SPECIAL_BASE ? 'p-sp' : ''}">${c.count || '·'}</td>`).join('')}</tr>`;
     });
     const size = slots.length > 11 ? 'all-s' : slots.length > 8 ? 'all-m' : 'all-l';
-    return `<div class="page landscape fill ${size} ${st().out.paper === 'B4' ? 'b4' : ''}" data-sheet="전체 시간표">${pageHead(`${S.title()} 시험시간표`, `위 칸: 시험 과목 · 아래 칸: 고사실 인원 (대기 = 미응시 학생 자습)${rooms.some((r) => r.i >= S.SPECIAL_BASE) ? ' · 연한 갈색 칸: 별도실' : ''}`)}
+    return `<div class="page landscape fill allpage ${size} ${st().out.paper === 'B4' ? 'b4' : ''}" data-sheet="전체 시간표"><div class="seat-head">${schoolLine()}<div class="sh-sub">${h(S.title())}</div><div class="sh-title">시험시간표</div><div class="sh-note">위 칸: 시험 과목 · 아래 칸: 고사실 인원 (대기 = 미응시 학생 자습)${rooms.some((r) => r.i >= S.SPECIAL_BASE) ? ' · 연한 갈색 칸: 별도실' : ''}</div></div>
       <table class="ptbl all fill-main"><colgroup><col class="c-date"><col class="c-gubun">${rooms.map(() => `<col style="width:${(76 / Math.max(1, rooms.length)).toFixed(3)}%">`).join('')}<col class="c-total"></colgroup><thead><tr><th>날짜</th><th>구분</th>${rooms.map((r) => `<th class="${r.i >= S.SPECIAL_BASE ? 'p-sp' : ''}">${h(r.name)}</th>`).join('')}<th>응시계</th></tr></thead><tbody>${body}</tbody></table></div>`;
   }
 
@@ -117,15 +117,17 @@
     for (let p = 0; p < Math.max(1, Math.ceil(list.length / perPage)); p++) pages.push(list.slice(p * perPage, (p + 1) * perPage));
     return pages.map((chunk, pi) => {
       const sp = !!c.special;
-      const col = (arr, off) => `<table class="ptbl roster"><thead><tr><th>연번</th><th>학번</th><th>성명</th>${sp ? '<th>과목</th><th>추가 시간</th>' : ''}<th>좌석</th><th>${isWait ? '비고' : '확인'}</th></tr></thead><tbody>${Array.from({ length: perCol }, (_, k) => {
+      const col = (arr, off) => `<table class="ptbl roster roster2"><thead><tr><th>연번</th><th>학번</th><th>성명</th>${sp ? '<th>과목</th><th>추가 시간</th>' : ''}<th>좌석</th><th>비고</th></tr></thead><tbody>${Array.from({ length: perCol }, (_, k) => {
         const r = arr[k];
         const ext = (x) => (x.extra ? `+${x.extra}분 <small>(~${h(endWithExtra(slotTime(slot), x.extra).split('~')[1] || '')})</small>` : '-');
-        return r ? `<tr><td>${pi * perPage + off + k + 1}</td><td>${C.studentNo(r.grade, r.ban, r.num)}</td><td>${h(r.name)}</td>${sp ? `<td>${h(C.onlySubject(r.subject))}</td><td>${ext(r)}</td>` : ''}<td>${r.seat ?? ''}</td><td></td></tr>` : `<tr class="blank"><td>&nbsp;</td><td></td><td></td>${sp ? '<td></td><td></td>' : ''}<td></td><td></td></tr>`;
+        const g5 = (k + 1) % 5 === 0 ? 'g5' : '';
+        return r ? `<tr class="${g5}"><td class="no">${pi * perPage + off + k + 1}</td><td>${C.studentNo(r.grade, r.ban, r.num)}</td><td class="nm">${h(r.name)}</td>${sp ? `<td>${h(C.onlySubject(r.subject))}</td><td>${ext(r)}</td>` : ''}<td class="seat"><span class="acc">${r.seat ?? ''}</span></td><td class="memo"></td></tr>` : `<tr class="blank ${g5}"><td class="no">&nbsp;</td><td></td><td></td>${sp ? '<td></td><td></td>' : ''}<td></td><td></td></tr>`;
       }).join('')}</tbody></table>`;
-      return `<div class="page fill" data-sheet="${h(`${slot.day}일${slot.period}교시 ${room.name}${pi ? ` (${pi + 1})` : ''}`)}">${pageHead(isWait ? '대기실 인원현황표' : '고사실 응시현황표', h(S.title()))}
-        <table class="ptbl info"><tr><th>시행일</th><td>${h(U.fmtDate(slotDate(slot)))}</td><th>교시</th><td>${slot.period}교시 (${h(slotTime(slot))})${extraNote(slot, i)}</td></tr>
-        <tr><th>고사실</th><td>${h(room.name)}</td><th>과목(단위)</th><td>${h(isWait ? '대기(자습)' : c.subject || '')}</td></tr>
-        <tr><th>응시분반</th><td>${h(isWait ? '-' : C.roomLabel(c.classRoom))}</td><th>${isWait ? '인원' : '응시인원'}</th><td>${list.length}명${isWait ? '' : ' (결시 ____명)'}</td></tr></table>
+      const subj = isWait ? '대기(자습)' : (c.subject || '');
+      return `<div class="page fill roompage" data-sheet="${h(`${slot.day}일${slot.period}교시 ${room.name}${pi ? ` (${pi + 1})` : ''}`)}">
+        <div class="seat-head">${schoolLine()}<div class="sh-sub">${h(S.title())}</div><div class="sh-title">${isWait ? '대기실 인원현황표' : '고사실 응시현황표'}</div><div class="sh-line">${h(room.name)} · ${slot.period}교시 · ${h(subj)}${pi ? ` · (${pi + 1}쪽)` : ''}</div></div>
+        <table class="ptbl seat-info"><thead><tr><th>시행일</th><th>교시</th><th>고사실</th><th>과목(단위)</th><th>${isWait ? '인원' : '응시인원'}</th></tr></thead>
+        <tbody><tr><td>${h(U.fmtDate(slotDate(slot)))}</td><td>${slot.period}교시${extraNote(slot, i)}<small class="tm">${h(slotTime(slot))}</small></td><td class="acc">${h(room.name)}</td><td>${h(subj)}${!isWait && c.classRoom ? `<small class="tm">${h(C.roomLabel(c.classRoom))}</small>` : ''}</td><td class="acc">${list.length}명</td></tr></tbody></table>
         <div class="two-col fill-main">${col(chunk.slice(0, perCol), 0)}${col(chunk.slice(perCol), perCol)}</div>
         <div class="sign">감독교사 &nbsp; 정: ____________ (인) &nbsp;&nbsp; 부: ____________ (인)</div></div>`;
     }).join('');
@@ -174,11 +176,13 @@
     const notes = (blanks ? 1 : 0) + (away.size ? 1 : 0);
     const listMm = people.length && o.seatList ? 12 + per * 4.9 : 0;
     // A4 297mm − 위아래 여백 28 − 제목 23 − 정보표 26 − 교탁 15 − 표 사이 8 − 주석 − 명렬표 (모두 여백 포함, mm)
-    const avail = 297 - 28 - 25 - 26 - 15 - 8 - notes * 9 - listMm - 8;
+    // examtable과 같이 열이 6개 이상이면 가로 용지
+    const land = (g.cols || st().seatCols) >= 6;
+    const avail = (land ? 210 : 297) - 28 - 25 - 26 - 15 - 8 - notes * 9 - listMm - 8;
     const seatH = gridRows ? Math.max(9, Math.min(22, (avail - (gridRows + 1) * 2.5) / gridRows)) : 22;
     const listTbl = people.length && o.seatList ? `<div class="seat-lists" style="--groups:${groups}">${colsOf.map((c, gi) => `<table class="ptbl seat-list2"><thead><tr><th>연번</th><th>학번</th><th>성명</th><th>좌석</th><th>비고</th></tr></thead>
       <tbody>${Array.from({ length: per }, (_, k) => { const x = c[k]; return x ? `<tr><td>${gi * per + k + 1}</td><td>${C.studentNo(x.r.grade, x.r.ban, x.r.num)}</td><td class="nm ${x.away ? 'away' : ''}">${h(x.r.name)}</td><td class="acc">${x.seat}</td><td class="memo">${x.away ? `→ ${h(x.r.room)}` : ''}</td></tr>` : '<tr class="pad"><td></td><td></td><td></td><td></td><td></td></tr>'; }).join('')}</tbody></table>`).join('')}</div>` : '';
-    return `<div class="page fill seatpage" data-sheet="${h(`${slot.day}일${slot.period}교시 ${room.name}`)}">
+    return `<div class="page fill seatpage ${land ? 'landscape' : ''}" data-sheet="${h(`${slot.day}일${slot.period}교시 ${room.name}`)}">
       <div class="seat-head">${schoolLine()}<div class="sh-sub">${h(S.title())}</div><div class="sh-title">고사실 좌석배치도</div></div>
       <table class="ptbl seat-info"><thead><tr><th>시행일</th><th>교시</th><th>고사실</th><th>과목(단위)</th><th>응시인원</th></tr></thead>
       <tbody><tr><td>${h(U.fmtDate(slotDate(slot)))}</td><td>${slot.period}교시${extraNote(slot, i)}</td><td class="acc">${h(room.name)}</td><td>${h(c.kind === 'wait' ? '대기(자습)' : c.subject || '')}</td><td class="acc">${list.length}명</td></tr></tbody></table>
