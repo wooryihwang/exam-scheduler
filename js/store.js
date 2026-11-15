@@ -126,6 +126,7 @@
    * 파일 저장은 시작할 때 한 번 모두 읽어 두고(동기 요청), 바뀔 때마다 서버로 보낸다.
    */
   const fileStore = (() => {
+    if (typeof location !== 'undefined' && location.protocol === 'file:') return null;   // 파일로 직접 연 경우(exe판 포함)는 서버가 없으니 묻지 않는다
     try {
       const x = new XMLHttpRequest(); x.open('GET', '/api/all', false); x.send();
       if (x.status === 200) { const r = JSON.parse(x.responseText); if (r && r.mode === 'file') return { dir: r.dir, items: r.items || {} }; }
