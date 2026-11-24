@@ -201,13 +201,21 @@ const resetTest = () => t('학년별 초기화 · 전체 초기화', () => {
   assert.strictEqual(S.projects().map((p) => p.name).join(','), names);
 });
 
-const industryTest = () => t('위탁학생: 표시 기억 · 연락 확인', () => {
-  S.newProject('산업'); S.importRows(rows, 'i.xlsx');
+const industryTest = () => t('위탁학생: 3학년에서만 · 표시 기억 · 연락 확인', () => {
+  const rows3 = C.parseNeis(window.Sample.sampleAoa(3)).rows;
+  // 1학년 작업에서는 기능이 꺼짐
+  S.newProject('1학년위탁'); S.importRows(rows, 'g1.xlsx');
+  assert.strictEqual(S.industryEnabled(), false);
+  S.setIndustry(S.rosterStudents()[0], true);
+  assert.strictEqual(S.isIndustry(S.rosterStudents()[0]), false);
+  S.setIndustry(S.rosterStudents()[0], false);
+  S.newProject('산업'); S.importRows(rows3, 'i.xlsx');
+  assert.strictEqual(S.industryEnabled(), true);
   const x = S.rosterStudents()[0];
   S.setIndustry(x, true);
   assert.ok(S.isIndustry(x));
   // 다른 작업 공간에서 같은 학생 자료를 다시 불러와도 학번·이름으로 다시 표시됨
-  S.newProject('산업2'); S.importRows(rows, 'j.xlsx');
+  S.newProject('산업2'); S.importRows(rows3, 'j.xlsx');
   assert.ok(S.isIndustry(S.rosterStudents().find((y) => y.key === x.key)));
   // 같은 학번이라도 이름이 다르면 표시하지 않음
   assert.strictEqual(S.isIndustry({ ...x, name: x.name + '다름' }), false);

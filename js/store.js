@@ -897,9 +897,11 @@
     // ------------------------------------------------ 위탁학생
     // 학번 + 이름으로 기억한다(모든 학년·시험 공통). 다음 시험에 편성 파일을 새로 불러와도 다시 표시된다.
     industryList: () => (Array.isArray(index.industry) ? index.industry : []),
+    /** 위탁학생 기능은 3학년 작업에서만 쓴다 (1·2학년에는 위탁학생이 없음) */
+    industryEnabled: () => S.currentGrade() === 3,
     industryNo: (x) => C.studentNo(x.grade || S.currentGrade(), x.ban, x.num),
     isIndustry(x) {
-      if (!x) return false;
+      if (!x || !S.industryEnabled()) return false;
       const no = S.industryNo(x);
       return S.industryList().some((y) => y.no === no && y.name === x.name);
     },

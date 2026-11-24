@@ -16,6 +16,8 @@
     ['sp', '10-8 별도 수험생'],
     ['ind', '10-9 위탁학생'],
   ];
+  /** 보이는 출력물 탭: 10-9 위탁학생은 3학년 작업에서만 */
+  const tabs = () => TABS.filter(([k]) => k !== 'ind' || S.industryEnabled());
   const ui = { tab: 'all', slot: '', room: '', ban: '', day: '', student: '', lbl: 0 };
 
   // ---------------------------------------------------------------- 데이터 도우미
@@ -687,8 +689,9 @@
       const { ctrl, preview, printBtns, scopeLabel } = controlsAndPreview();
       ui.scopeLabel = scopeLabel;
       if (ui.tab === 'label') requestAnimationFrame(fitLabelPreview);
+      if (!tabs().some(([k]) => k === ui.tab)) ui.tab = 'all';
       return stepHead(10, (TABS.find(([k]) => k === ui.tab) || [])[1] || '인쇄 및 출력물', '고사 운영에 필요한 시간표와 명단을 미리 봅니다. 범위를 고른 뒤 <b>📊 엑셀 저장</b> · <b>📄 PDF 저장</b> · <b>🖨 출력</b> 중 하나를 누르세요.') +
-        `<div class="tabs">${TABS.map(([k, l]) => `<button class="tab ${ui.tab === k ? 'on' : ''}" data-act="o-tab" data-tab="${k}">${h(l)}</button>`).join('')}</div>
+        `<div class="tabs">${tabs().map(([k, l]) => `<button class="tab ${ui.tab === k ? 'on' : ''}" data-act="o-tab" data-tab="${k}">${h(l)}</button>`).join('')}</div>
         <div class="toolbar">${ctrl}<span class="spacer"></span>${printBtns}</div>
         <div class="preview">${preview}</div>`;
     },
@@ -742,7 +745,7 @@
   Views.list.push(outputs);
   Views.setOutputsRerender = (f) => { rerender = f; };
   // 사이드바 '인쇄 및 출력물' 하위 메뉴
-  Views.outputsTabs = () => TABS;
+  Views.outputsTabs = () => tabs();
   Views.outputsTab = () => ui.tab;
-  Views.setOutputsTab = (k) => { if (TABS.some(([x]) => x === k)) ui.tab = k; };
+  Views.setOutputsTab = (k) => { if (tabs().some(([x]) => x === k)) ui.tab = k; };
 })();

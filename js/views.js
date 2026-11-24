@@ -137,7 +137,8 @@
       const shown = list; // 검색은 줄 숨김으로 처리 (main.js applyFilter)
       const locked = s.confirmed.roster;
       const conv = list.filter((x) => x.convenience).length;
-      const indN = list.filter((x) => S.isIndustry(x)).length;
+      const indOn = S.industryEnabled();
+      const indN = indOn ? list.filter((x) => S.isIndustry(x)).length : 0;
       const indBtn = (x) => { const on = S.isIndustry(x); return `<button class="btn ghost xs ind-btn ${on ? 'on' : ''}" data-act="roster-ind" data-key="${h(x.key)}" title="${on ? '위탁학생 표시를 지웁니다' : '위탁 교육 기관에서 수업을 받는 위탁학생으로 표시합니다. 출력물에 표시되고 응시현황에서 담임 연락을 확인합니다.'}">${on ? '위탁학생 해제' : '위탁학생'}</button>`; };
       return head +
         banner(locked ? 'ok' : 'info', locked ? '학생편성현황을 확정하였습니다. <b>2. 기초정보</b>에서 고사 일자·시간과 고사실을 확인하세요.' : '미확정 상태입니다. 학생 명단을 확인한 뒤 <b>학생편성현황 확정</b>을 누르세요.') +
@@ -147,7 +148,7 @@
           ${stat('수강 내역', s.rows.length + '건')}
           ${stat('개설 과목', new Set(s.rows.map((x) => x.과목)).size + '과목')}
           ${stat('편의반', conv + '명')}
-          ${stat('위탁학생', indN + '명', '시험 연락 확인 대상')}
+          ${indOn ? stat('위탁학생', indN + '명', '시험 연락 확인 대상') : ''}
         </div>
         <div class="toolbar">
           ${searchBox('roster-q', '반·번호·이름 검색', ui.rosterQ, 'roster-tbody')}
@@ -156,14 +157,14 @@
         </div>
         <div class="table-wrap tall">
           <table class="tbl">
-            <thead><tr><th>반</th><th>번호</th><th>성명</th><th>수강 과목 수</th><th>고사실</th><th class="right" title="위탁학생 표시 · 편의반 이동 · 학생 삭제 (편의반·삭제는 확정 전에만)">관리</th></tr></thead>
+            <thead><tr><th>반</th><th>번호</th><th>성명</th><th>수강 과목 수</th><th>고사실</th><th class="right" title="${indOn ? '위탁학생 표시 · ' : ''}편의반 이동 · 학생 삭제 (편의반·삭제는 확정 전에만)">관리</th></tr></thead>
             <tbody id="roster-tbody">${shown.map((x) => `
               <tr class="${S.isIndustry(x) ? 'ind' : ''}" data-q="${h(`${x.ban} ${x.num} ${x.name}`)}">
                 <td>${h(x.ban)}</td><td>${x.num}</td>
                 <td><button class="link" data-act="roster-detail" data-key="${h(x.key)}">${h(x.name)}</button></td>
                 <td>${x.count}</td>
                 <td>${x.convenience ? '<span class="badge warn">편의반</span>' : '<span class="muted">소속 반</span>'}${S.isIndustry(x) ? ' <span class="badge ind">위탁학생</span>' : ''}</td>
-                <td class="right">${indBtn(x)} ${locked ? '<span class="muted sm">확정됨</span>' : `
+                <td class="right">${indOn ? indBtn(x) : ''} ${locked ? '<span class="muted sm">확정됨</span>' : `
                   ${x.convenience ? `<button class="btn ghost xs" data-act="roster-restore" data-key="${h(x.key)}">편의반 해제</button>` : `<button class="btn ghost xs" data-act="roster-conv" data-key="${h(x.key)}">편의반 이동</button>`}
                   <button class="btn ghost xs danger-text" data-act="roster-del" data-key="${h(x.key)}">삭제</button>`}
                 </td>
@@ -171,7 +172,7 @@
             </tbody>
           </table>
         </div>
-        <p class="hint">편의반: 편의제공 대상 학생이 별도 고사실에서 응시할 때 사용합니다. 학생 삭제: 시험을 보지 않는 학생을 명단에서 뺍니다. 위탁학생: 위탁 교육 기관에서 수업을 받는 학생을 표시하면 출력물에 드러나고, 9. 응시현황에서 담임 연락을 확인합니다. 표시는 학번·이름으로 기억해 다음 시험에도 그대로 남습니다.</p>`;
+        <p class="hint">편의반: 편의제공 대상 학생이 별도 고사실에서 응시할 때 사용합니다. 학생 삭제: 시험을 보지 않는 학생을 명단에서 뺍니다.${indOn ? ` 위탁학생: 위탁 교육 기관에서 수업을 받는 학생을 표시하면 출력물에 드러나고, 9. 응시현황에서 담임 연락을 확인합니다. 표시는 학번·이름으로 기억해 다음 시험에도 그대로 남습니다.` : ''}</p>`;
     },
     actions: {
       'load-sample'(el) { const g = +el.dataset.g || 1; importAoa(Sample.sampleAoa(g), `샘플_학생편성현황_${g}학년.xlsx`); },
