@@ -964,7 +964,7 @@
           <span class="muted sm" data-tip="자습(미응시) 학생 가운데 자기 반 교실에서 자습하는 학생의 비율 (모든 교시)">${allOwnRate(locked)}</span>
         </div>` +
         `<div class="table-wrap pl-wrap">
-          <table class="tbl pl ${ui.plCompact ? 'compact-view' : ''}">
+          <table class="tbl pl ${ui.plCompact ? 'compact-view' : ''} ${ui.gapEdit && !locked ? 'gap-editing' : ''}">
             <thead><tr><th class="pl-head">구분${locked ? '' : `<button class="btn ${ui.gapEdit ? 'primary' : 'outline'} xs gap-btn" data-act="pl-gap-edit" title="교실 사이에 복도·계단처럼 떨어진 곳이 있으면 표시합니다. 표시한 곳은 화면에서 살짝 띄워지고, 자동 배치 때 시험실과 자습실이 그곳을 사이에 두고 떨어지면 빈 교실(완충)을 두지 않습니다.">${ui.gapEdit ? '✓ 띄워진 공간 넣기 끝' : '띄워진 공간 넣기'}</button>`}</th>${usable.map((i, k) => {
               const gap = gapAfter(i);
               const tgl = ui.gapEdit && !locked && k < usable.length - 1 ? `<button class="gap-tgl ${gap ? 'on' : ''}" data-act="pl-gap" data-i="${i}" title="${h(rooms[i].name)}와(과) ${h(rooms[usable[k + 1]].name)} 사이를 ${gap ? '붙이기' : '띄우기 (복도·계단 등으로 떨어져 있음)'}">${gap ? '⇤⇥' : '⇹'}</button>` : '';
@@ -977,14 +977,17 @@
     actions: {
       async 'pl-auto'(el) {
         const slot = S.slots().find((x) => x.key === el.dataset.k);
+        if (!(await askGapsOnce())) return;
         await autoPlaceOne(slot);
       },
       async 'pl-auto-all'() {
         const rule = st().options.autoMode === 'rule';
         const any = S.slots().some((sl) => S.cells(sl.key).some(Boolean));
         const v = await U.modal({
-          title: '전체 자동 배치',
-          body: rule ? `<p>모든 교시를 <b>학교 규칙</b>으로 배치합니다.</p><ul class="hint-list">
+          title: '전체 자동 배치', wide: rule,
+          onMount: rule ? mountGapStrip : undefined,
+          body: rule ? `<h4 class="gap-step">① 띄워진 공간 확인</h4>${GAP_HELP}<div class="gap-box">${gapStrip()}</div>
+            <h4 class="gap-step">② 배치 규칙</h4><p>모든 교시를 <b>학교 규칙</b>으로 배치합니다.</p><ul class="hint-list">
               <li>전체 학생이 보는 과목: 각 반 <b>자기 교실</b>에서 시험</li>
               <li>1개 반만 보는 과목: 인원에 맞는 <b>특별실</b>에서 시험, 나머지는 각자 교실에서 자습</li>
               <li>2~3개 반: <b>앞 교실</b>(1반 쪽)부터 시험실, 바로 다음 교실은 <b>빈 교실</b>, 그 뒤부터 자습실</li>
@@ -994,6 +997,7 @@
           buttons: [{ label: '취소', value: null }, ...(any ? [{ label: '빈 칸만 채우기', value: 'keep' }] : []), { label: any ? '처음부터 다시 배치' : '자동 배치', value: 'fresh', cls: 'primary' }],
         });
         if (!v) return;
+        ui.gapAsked = true;
         if (rule) S.autoPlaceAll(v === 'fresh');
         else { if (v === 'fresh') S.clearAllPlacement(); for (const slot of S.slots()) await autoPlaceOne(slot, true); }
         U.toast('자동 배치를 마쳤습니다. 잘못된 칸은 끌어서 바꾸거나 칸 아래 버튼으로 고치세요. (Ctrl+Z 되돌리기)', 'ok');
@@ -1115,6 +1119,45 @@
     S.unconfirmTimetable();
     U.toast('시간표 확정을 취소하였습니다. 과목을 끌어 옮기거나 자동 편성할 수 있습니다.', 'ok');
     return true;
+  }
+
+  /** 자동 배치 전 띄워진 공간 확인: 교실을 한 줄로 늘어놓고 사이사이 ⇹ 를 눌러 띄우거나 붙인다 */
+  function gapStrip() {
+    const rooms = st().rooms, gaps = st().roomGaps || [];
+    const usable = rooms.map((r, i) => (C.isRoomUsable(r) ? i : -1)).filter((i) => i >= 0);
+    const segs = C.roomSegments(usable, gaps);
+    const strip = usable.map((i, k) => {
+      const next = usable[k + 1];
+      const apart = next != null && C.roomsApart(gaps, i, next);
+      const tgl = next == null ? '' : `<button class="gs-tgl ${apart ? 'on' : ''}" data-gap="${i}" title="${h(rooms[i].name)}와(과) ${h(rooms[next].name)} 사이를 ${apart ? '붙이기' : '띄우기 (복도·계단 등으로 떨어져 있음)'}">${apart ? '⇤⇥' : '⇹'}</button>`;
+      return `<span class="gs-room ${C.isClassRoom(rooms[i]) ? '' : 'extra'}"><b>${h(rooms[i].name)}</b><small>${rooms[i].cap || '-'}명</small></span>${tgl}`;
+    }).join('');
+    const sum = segs.length > 1 ? `교실 묶음 ${segs.length}개: ${segs.map((g) => `<b>${h(rooms[g[0]].name)}${g.length > 1 ? '~' + h(rooms[g[g.length - 1]].name) : ''}</b>`).join(' | ')}` : '띄워진 공간이 없습니다. 모든 교실이 한 줄로 이어져 있습니다.';
+    return `<div class="gap-strip">${strip}</div><p class="gap-sum">${sum}</p>`;
+  }
+  const GAP_HELP = `<p class="gap-lead">복도·계단·학년실처럼 <b>떨어진 곳</b>이 있으면 교실 사이의 <span class="gs-demo">⇹</span> 를 눌러 띄우세요. 다시 누르면 붙습니다.</p>
+    <ul class="hint-list"><li>자동 배치는 시험 분반 수와 인원이 들어가는 <b>가장 작은 교실 묶음 안</b>에 시험실을 모읍니다.</li>
+    <li>그 묶음에서 남는 교실은 <b>빈 교실</b>로 두고, 자습은 다른 묶음 교실에서 합니다. 바로 옆 반이 자습해 소란스러워지는 일을 막습니다.</li>
+    <li>여기서 정한 공간은 표 위 [띄워진 공간 넣기]와 같은 설정입니다.</li></ul>`;
+  const mountGapStrip = (m) => {
+    m.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-gap]');
+      if (!b) return;
+      S.toggleRoomGap(+b.dataset.gap);
+      const box = m.querySelector('.gap-box'); if (box) box.innerHTML = gapStrip();
+    });
+  };
+  /** 한 교시 자동 배치 전, 이 작업에서 처음 한 번 띄워진 공간을 확인한다 → 계속하면 true */
+  async function askGapsOnce() {
+    if (ui.gapAsked || st().options.autoMode !== 'rule') return true;
+    const v = await U.modal({
+      title: '먼저 띄워진 공간을 확인하세요', wide: true,
+      body: GAP_HELP + '<div class="gap-box">' + gapStrip() + '</div>',
+      buttons: [{ label: '취소', value: null }, { label: '이대로 자동 배치', value: 'go', cls: 'primary' }],
+      onMount: mountGapStrip,
+    });
+    if (v) ui.gapAsked = true;
+    return !!v;
   }
 
   async function autoPlaceOne(slot, bulk) {

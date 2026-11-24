@@ -276,4 +276,26 @@ t('자습 교시: 그날 첫 시험 전 빈 교시는 전원 자기 반 교실 �
   for (const [i, r] of ros.rooms) if (C.isClassRoom(rooms[i])) assert.ok(r.list.every((x) => x.ban === rooms[i].ban), rooms[i].name);
 });
 
+t('띄워진 공간 묶음: 시험실을 인원에 맞는 가장 작은 묶음 안에 모음', () => {
+  assert.deepStrictEqual(C.roomSegments([0, 1, 2, 3, 4, 5], [3]), [[0, 1, 2, 3], [4, 5]]);
+  assert.deepStrictEqual(C.roomSegments([0, 1, 2], []), [[0, 1, 2]]);
+  const place = (bans, waitN, gaps) => {
+    const sc = bans.map((n, k) => ({ subject: '선택과목', room: `선택-${k}`, stuCount: n }));
+    const info = { banTotal: bans.length, exam: bans.reduce((a, b) => a + b, 0), wait: waitN, waitByBan: { '1반': 20, '2반': 20, '3반': 20, '4반': 20, '5반': 20, '6반': 20 } };
+    return C.autoPlaceSlot({ key: 'x', subjects: ['선택과목'] }, [], { rooms, sbMap: C.subjectBanMap(sc), info, gaps }, false, 'rule').map((v) => C.parseCell(v).type);
+  };
+  // 1~4반 | 5~6반: 2개 분반은 5~6반 묶음을 통째로 쓰고 완충 교실 없이 1~4반에서 자습
+  const at = (cells, type) => cells.slice(0, 6).map((v, i) => (v === type ? i : -1)).filter((i) => i >= 0);
+  const a = place([20, 20], 80, [3]);
+  assert.deepStrictEqual(at(a, 'exam'), [4, 5]); assert.deepStrictEqual(at(a, 'void'), []); assert.strictEqual(at(a, 'wait')[0], 0);
+  // 1~3반 | 4~6반: 2개 분반은 앞 묶음, 묶음 안 남는 교실은 빈 교실, 자습은 다른 묶음
+  const b = place([20, 20], 60, [2]);
+  assert.deepStrictEqual(at(b, 'exam'), [0, 1]); assert.deepStrictEqual(at(b, 'void'), [2]); assert.ok(at(b, 'wait').every((i) => i >= 3));
+  // 4개 분반은 들어가는 묶음(1~4반)에, 자습은 5~6반
+  const c = place([20, 20, 20, 20], 40, [3]);
+  assert.deepStrictEqual(at(c, 'exam'), [0, 1, 2, 3]); assert.ok(at(c, 'wait').every((i) => i >= 4));
+  // 띄워진 공간이 없으면 예전 규칙 그대로
+  assert.deepStrictEqual(place([25, 25], 100, []).slice(0, 3), ['exam', 'exam', 'void']);
+});
+
 console.log(`\n${pass}개 테스트 통과`);

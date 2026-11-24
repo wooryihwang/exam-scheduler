@@ -678,6 +678,30 @@
     const lo = Math.min(a, b), hi = Math.max(a, b);
     return gaps.some((g) => g >= lo && g < hi);
   }
+  /** 교실 번호 목록을 띄워진 공간 기준으로 묶음(연속한 교실)으로 나눈다 */
+  function roomSegments(idx, gaps) {
+    const segs = [];
+    idx.forEach((i, k) => { if (k === 0 || roomsApart(gaps, idx[k - 1], i)) segs.push([]); segs[segs.length - 1].push(i); });
+    return segs;
+  }
+  /**
+   * 시험실 묶음 고르기: 띄워진 공간으로 학반 교실이 2묶음 이상일 때만.
+   * 빈 교실 수 ≥ 시험 분반 수이고, 큰 교실부터 분반 수만큼의 정원 합 ≥ 응시 인원인 묶음 가운데
+   * 교실 수가 가장 적은 묶음(같으면 뒤 교실 규칙이면 뒤쪽, 아니면 앞쪽). 맞는 묶음이 없으면 null.
+   */
+  function pickSegment(classIdx, gaps, pending, free, cap, back) {
+    const segs = roomSegments(classIdx, gaps);
+    if (segs.length < 2 || !pending.length) return null;
+    const need = pending.length, stu = pending.reduce((t, sb) => t + sb.stuCount, 0);
+    const fits = segs.map((seg, si) => ({ seg, si, fr: seg.filter(free) })).filter((x) => {
+      if (x.fr.length < need) return false;
+      const caps = x.fr.map((i) => cap(i) || Infinity).sort((a, b) => b - a).slice(0, need);
+      return caps.reduce((t, c) => t + c, 0) >= stu;
+    });
+    fits.sort((a, b) => a.fr.length - b.fr.length || (back ? b.si - a.si : a.si - b.si));
+    return fits[0] || null;
+  }
+
   /** 회차에 응시하는 학생이 있는 반 → 1 */
   const students1 = (info) => { const o = {}; for (const m of Object.values(info.homeCount)) for (const b of Object.keys(m)) o[b] = 1; return o; };
   function autoPlaceRule(slot, cellsIn, ctx) {
@@ -745,6 +769,28 @@
 
     // ③·④ 앞(또는 뒤) 교실 묶음에 시험실 + 완충 빈 교실
     const back = n >= RULE_BACK_FROM;
+    // 띄워진 공간(복도·계단)으로 교실이 여러 묶음이면, 시험 분반 수·인원이 들어가는 가장 작은 묶음 안에 시험실을 모은다.
+    // 그 묶음의 남는 교실은 빈 교실로 두어 바로 옆에서 자습하지 않게 하고, 자습은 다른 묶음 → 특별실 순서로 배정한다.
+    const seg = pickSegment(classIdx, ctx.gaps, pending, free, cap, back);
+    if (seg) {
+      const inner = back ? seg.fr.slice().reverse() : seg.fr.slice();
+      const exam = inner.slice(0, pending.length);
+      const big = pending.map((sb, k) => ({ sb, k })).sort((a, b) => b.sb.stuCount - a.sb.stuCount || a.k - b.k);
+      const byCap = exam.slice().sort((a, b) => cap(b) - cap(a) || a - b);
+      big.forEach(({ sb }, k) => { cells[byCap[k]] = sb.key; });
+      pending.length = 0;
+      const buffers = inner.slice(exam.length);
+      buffers.forEach((i) => { cells[i] = VOID_CELL; });
+      fillWaits(classIdx);
+      fillWaits(extraIdx);
+      // 그래도 자습 자리가 모자라면 시험실에서 먼 빈 교실부터 자습실로
+      const dist = (i) => Math.min(...exam.map((e) => Math.abs(classIdx.indexOf(e) - classIdx.indexOf(i))));
+      for (const i of buffers.slice().sort((a, b) => dist(b) - dist(a))) {
+        if (remainWait() < 1) break;
+        cells[i] = ''; putWait(i, remainWait());
+      }
+      return cells;
+    }
     const order = back ? classIdx.slice().reverse() : classIdx.slice();
     // 교실 정원보다 큰 분반은 맞는 특별실로 먼저 (가장 작은 것부터)
     const blockCap = Math.max(0, ...order.filter(free).slice(0, pending.length).map(cap));
@@ -1233,7 +1279,7 @@
     buildStudents, subjectStudentSets, canSameTime, findSameTimeCombos,
     ttCell, remainingSubjects, duplicateSubjects, candidateSubjects, dayDistribution, cellStatus, validateTimetable, autoTimetable,
     subjectBanMap, examSlots, studySlots, placeSlots, slotInfo, parseCell, waitCell, homeCell, homeSize, moreCell, VOID_CELL, slotPlacementStatus, slotRoster, studentIndex, unplacedHomes, balanceMoves, placementIssues, unplacedBans, classNoOfRoom,
-    autoPlaceSlot, fitWaits, roomsApart, canUseExtra, buildSeating,
+    autoPlaceSlot, fitWaits, roomsApart, roomSegments, canUseExtra, buildSeating,
     assignSeatsInOrder, assignSeatsRandom, validateSeating, seatGrid,
     isProgramWorkbook, readProgram, stateFromProgram, seatKey, toISODate,
     holidayReason, nextSchoolDays, hasHolidayTable,
