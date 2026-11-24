@@ -89,7 +89,7 @@
   // ---------------------------------------------------------------- 9-1 전체 시간표 (MakeGradeTable)
   function pageAll() {
     const rooms = usedRooms(), slots = S.slots();
-    let body = '', lastDay = 0;
+    let body = '', lastDay = 0, dayNo = 0;
     slots.forEach((slot) => {
       const sameDay = slots.filter((s) => s.day === slot.day).length;
       const cells = rooms.map((r) => cellOf(slot, r.i));
@@ -102,10 +102,13 @@
         if (g && g.label === label && label !== '·' && g.sp === sp) g.span++; else groups.push({ label, span: 1, kind: c.kind, sp });
       });
       const total = cells.reduce((t, c) => t + (c.kind === 'exam' ? c.count : 0), 0);
-      const dayCell = slot.day !== lastDay ? `<td class="p-date" rowspan="${sameDay * 2}">${h(U.fmtDateShort(slotDate(slot)) || slot.day + '일차')}</td>` : '';
+      const newDay = slot.day !== lastDay;
+      if (newDay) dayNo++;
+      const dayCls = `${dayNo % 2 ? 'day-odd' : 'day-even'}${newDay && dayNo > 1 ? ' day-start' : ''}`;
+      const dayCell = newDay ? `<td class="p-date" rowspan="${sameDay * 2}">${h(U.fmtDateShort(slotDate(slot)) || slot.day + '일차')}</td>` : '';
       lastDay = slot.day;
-      body += `<tr class="r1">${dayCell}<td class="p-gyosi">${slot.period}교시<small>(${C.minutesOf(slotTime(slot))})</small></td>${groups.map((g) => `<td colspan="${g.span}" class="${g.kind === 'wait' ? 'p-wait' : ''} ${g.sp ? 'p-sp' : ''}">${h(g.label)}</td>`).join('')}<td rowspan="2" class="p-total">${total}</td></tr>
-        <tr class="r2"><td class="p-time">${h(slotTime(slot).replace(/\s/g, ''))}</td>${cells.map((c, k) => `<td class="p-cnt ${rooms[k].i >= S.SPECIAL_BASE ? 'p-sp' : ''}">${c.count || '·'}</td>`).join('')}</tr>`;
+      body += `<tr class="r1 ${dayCls}">${dayCell}<td class="p-gyosi">${slot.period}교시<small>(${C.minutesOf(slotTime(slot))})</small></td>${groups.map((g) => `<td colspan="${g.span}" class="${g.kind === 'wait' ? 'p-wait' : ''} ${g.sp ? 'p-sp' : ''}">${h(g.label)}</td>`).join('')}<td rowspan="2" class="p-total">${total}</td></tr>
+        <tr class="r2 ${dayCls.replace(' day-start', '')}"><td class="p-time">${h(slotTime(slot).replace(/\s/g, ''))}</td>${cells.map((c, k) => `<td class="p-cnt ${rooms[k].i >= S.SPECIAL_BASE ? 'p-sp' : ''}">${c.count || '·'}</td>`).join('')}</tr>`;
     });
     const size = slots.length > 11 ? 'all-s' : slots.length > 8 ? 'all-m' : 'all-l';
     return `<div class="page landscape fill allpage ${size} ${st().out.paper === 'B4' ? 'b4' : ''}" data-sheet="전체 시간표"><div class="seat-head">${schoolLine()}<div class="sh-sub">${h(S.title())}</div><div class="sh-title">시험시간표</div><div class="sh-note">위 칸: 시험 과목 · 아래 칸: 고사실 인원 (대기 = 미응시 학생 자습)${rooms.some((r) => r.i >= S.SPECIAL_BASE) ? ' · 연한 갈색 칸: 별도실' : ''}</div></div>
