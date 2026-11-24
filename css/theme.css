@@ -553,3 +553,8 @@ body[data-grade="3"] .page { --p-accent: #9b1c1c; }
 .eval-tbl .chk.tri.some::after { content: ''; position: absolute; left: 3px; right: 3px; top: 6px; height: 2.5px; background: #b91c1c; border-radius: 2px; }
 .eval-tbl .chk.tri { cursor: pointer; }
 .eval-tbl .chk.tri.off, .eval-tbl tr.locked .chk { opacity: .55; cursor: default; }
+
+/* 7. 학생 배치: 정원 초과 칸은 목록 대신 칸 자체를 빨갛게 */
+.pl-cell.over { box-shadow: inset 0 0 0 3px #dc2626 !important; background-image: linear-gradient(rgba(220, 38, 38, .12), rgba(220, 38, 38, .12)) !important; }
+.pl-cell.over .c-cnt { color: #b91c1c !important; font-weight: 900; }
+.pl-cell.over .c-cnt::before { content: '초과 '; font-size: 10.5px; font-weight: 800; }

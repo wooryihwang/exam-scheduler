@@ -865,7 +865,6 @@
       // 띄워진 공간: 이 고사실과 다음(사용하는) 고사실 사이
       const gapAfter = (i) => { const k = usable.indexOf(i); return k >= 0 && k < usable.length - 1 && C.roomsApart(s.roomGaps, i, usable[k + 1]); };
       let firstErr = '';
-      const warns = [];
       const issues = !locked && ui.plCheck ? S.placementIssues() : [];
       const issueAt = (k, i) => issues.filter((x) => x.slot === k && x.i === i);
       const rowsHtml = slots.map((slot) => {
@@ -877,13 +876,12 @@
           : cells.map((_, i) => (ros.rooms.get(i) ? ros.rooms.get(i).list.length : null));
         const slotIssues = issues.filter((x) => x.slot === slot.key);
         const stt = C.slotPlacementStatus(slot, cells, info, sb, rooms, counts);
-        stt.warnings.forEach((x) => warns.push(`${slot.title} ${x}`));
         const nMoved = Object.keys((s.moves || {})[slot.key] || {}).length;
         if (!firstErr && (stt.status !== 'OK' || stt.problems.length)) firstErr = `【${slot.title}】 ${stt.problems[0] || C.STATUS_TEXT[stt.status]}`;
         const ok = stt.status === 'OK' && !stt.problems.length;
         return `<tr>
           <th class="pl-head">
-            <div class="pl-title">${locked ? '' : `<button class="lock-btn ${S.isLocked(slot.key) ? 'on' : ''}" data-act="pl-lock" data-k="${slot.key}" title="${S.isLocked(slot.key) ? '잠금 풀기: 다시 고치거나 자동 배치할 수 있습니다' : '이 교시 잠그기: 자동 배치·편집으로 바뀌지 않게 보호합니다'}">${S.isLocked(slot.key) ? '🔒' : '🔓'}</button>`}${h(slot.title)} ${slotIssues.length ? `<span class="badge bad" data-act="pl-issue-go" data-k="${slot.key}" title="누르면 문제가 있는 칸으로 이동합니다.">문제 ${slotIssues.length}건</span>` : ''}${ok ? '<span class="badge ok">완료</span>' : `<span class="badge warn">${h(stt.status === 'OK' ? '확인' : stt.status)}</span>`}</div>
+            <div class="pl-title">${locked ? '' : `<button class="lock-btn ${S.isLocked(slot.key) ? 'on' : ''}" data-act="pl-lock" data-k="${slot.key}" title="${S.isLocked(slot.key) ? '잠금 풀기: 다시 고치거나 자동 배치할 수 있습니다' : '이 교시 잠그기: 자동 배치·편집으로 바뀌지 않게 보호합니다'}">${S.isLocked(slot.key) ? '🔒' : '🔓'}</button>`}${h(slot.title)} ${slotIssues.length ? `<span class="badge bad" data-act="pl-issue-go" data-k="${slot.key}" title="누르면 문제가 있는 칸으로 이동합니다.">문제 ${slotIssues.length}건</span>` : ''}${stt.warnings.length && !locked ? `<span class="badge bad" title="${h(stt.warnings.join('\n'))}&#10;빨간 칸의 인원 ▸ 를 눌러 학생을 옮기거나 [인원 맞추기]를 누르세요.">정원 초과 ${stt.warnings.length}</span>` : ''}${ok ? '<span class="badge ok">완료</span>' : `<span class="badge warn">${h(stt.status === 'OK' ? '확인' : stt.status)}</span>`}</div>
             <div class="pl-subj" ${slot.study ? '' : `title="${h(slot.subjects.map(C.onlySubject).join(', '))}"`}>${slot.study ? '<span class="badge info" title="시험이 없는 교시입니다. 학생들은 각자 자기 반 교실에서 자습합니다.">자습 교시 (시험 없음)</span>' : slot.subjects.map((x) => h(C.onlySubject(x))).join(', ')}${nMoved ? ` <span class="badge info">학생 이동 ${nMoved}명</span>` : ''}</div>
             <table class="mini"><tr><td></td><td>반수</td><td>응시</td><td>미응시</td></tr>
               <tr><td>계</td><td>${info.banTotal}</td><td>${info.exam}</td><td>${info.wait}</td></tr>
@@ -926,7 +924,9 @@
             const iss = issueAt(slot.key, i);
             if (iss.length) cls += ' issue';
             if (gapAfter(i)) cls += ' gap-after';
-            return `<td class="pl-cell ${cls}" ${iss.length ? `title="${h(iss.map((x) => x.msg).join(' / '))}" data-issue="1"` : ''} data-act="pl-cell" data-k="${slot.key}" data-i="${i}" ${!locked && v && v !== C.VOID_CELL ? 'data-drag="cell"' : ''} data-drop="pl" ><div class="c-body">${inner}</div>${quick}</td>`;
+            const tips = iss.map((x) => x.msg);
+            if (/\bover\b/.test(cls) && !locked) tips.unshift(`최대 수용인원 ${capN}명 초과 — 인원 ▸ 를 눌러 학생을 옮기거나 [인원 맞추기]를 누르세요.`);
+            return `<td class="pl-cell ${cls}" ${tips.length ? `title="${h(tips.join(' / '))}"` : ''} ${iss.length ? 'data-issue="1"' : ''} data-act="pl-cell" data-k="${slot.key}" data-i="${i}" ${!locked && v && v !== C.VOID_CELL ? 'data-drag="cell"' : ''} data-drop="pl" ><div class="c-body">${inner}</div>${quick}</td>`;
           }).join('')}
         </tr>`;
       }).join('');
@@ -963,7 +963,6 @@
           <button class="btn ${ui.plCompact ? 'primary' : 'ghost'} sm" data-act="pl-compact" title="칸을 작게 줄여 모든 교시·고사실을 한 화면에 봅니다">${ui.plCompact ? '✓ 한눈에 보기' : '🔍 한눈에 보기'}</button>
           <span class="muted sm" data-tip="자습(미응시) 학생 가운데 자기 반 교실에서 자습하는 학생의 비율 (모든 교시)">${allOwnRate(locked)}</span>
         </div>` +
-        (warns.length && !locked ? banner('warn', `⚠ ${warns.map(h).join('<br>⚠ ')}<br><span class="muted">배치 확정 전에 고쳐야 합니다 — 인원 ▸ 를 눌러 학생을 옮기거나, [인원 맞추기]·[고사장]으로 추가 고사장을 지정하세요. (수용인원은 [2. 기초정보]에서 바꿀 수 있습니다)</span>`) : '') +
         `<div class="table-wrap pl-wrap">
           <table class="tbl pl ${ui.plCompact ? 'compact-view' : ''}">
             <thead><tr><th class="pl-head">구분${locked ? '' : `<button class="btn ${ui.gapEdit ? 'primary' : 'outline'} xs gap-btn" data-act="pl-gap-edit" title="교실 사이에 복도·계단처럼 떨어진 곳이 있으면 표시합니다. 표시한 곳은 화면에서 살짝 띄워지고, 자동 배치 때 시험실과 자습실이 그곳을 사이에 두고 떨어지면 빈 교실(완충)을 두지 않습니다.">${ui.gapEdit ? '✓ 띄워진 공간 넣기 끝' : '띄워진 공간 넣기'}</button>`}</th>${usable.map((i, k) => {
