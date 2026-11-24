@@ -639,3 +639,15 @@ body[data-grade="3"] .page { --p-accent: #9b1c1c; }
 .page.indpage .ptbl.ind-sign td.nm { font-weight: 800; }
 .page.indlist .ptbl.ind-list td { height: 9mm; font-size: 11pt; }
 .page.indlist .ptbl.ind-list tr.todo td { background: #fdecec; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+/* 7. 학생 배치: 칸 잠금 */
+.tbl.pl td.pl-cell { position: relative; }
+.pl-cell .cell-lock { position: absolute; top: 4px; right: 4px; z-index: 2; width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #94a3b8; cursor: pointer; opacity: 0; transition: opacity .12s; }
+.pl-cell:hover .cell-lock, .pl-cell .cell-lock:focus-visible { opacity: 1; }
+.pl-cell .cell-lock:hover { background: #fff; border-color: #cbd5e1; color: #b91c1c; }
+.pl-cell .cell-lock.on { opacity: 1; color: #b91c1c; background: #fff; border-color: #1f2937; box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
+.pl-cell.cell-locked { box-shadow: inset 0 0 0 2px rgba(185, 28, 28, .55); }
+.pl-cell.cell-locked .c-body { opacity: .92; }
+.pl-cell.cell-locked.over { box-shadow: inset 0 0 0 3px #dc2626 !important; }
+/* 프로그램 이름 옆 버전 */
+.brand-title .ver { display: inline-block; margin-left: 4px; padding: 1px 6px; border-radius: 999px; background: #f1f5f9; color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: 0; vertical-align: 2px; }

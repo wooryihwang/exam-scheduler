@@ -931,13 +931,15 @@
               inner = '<div class="c-subj">빈 교실</div><div class="c-ban">시험 완충</div>';
             } else inner = locked ? '' : '<div class="c-empty" title="누르면 이 교실에 넣을 분반·자습을 고릅니다. 다른 칸을 끌어다 놓아도 됩니다.">＋</div>';
             const q = (kind, label, tip) => `<button class="q-btn q-${kind} ${c.type === kind ? 'on' : ''}" data-act="pl-quick" data-q="${kind}" data-k="${slot.key}" data-i="${i}" title="${tip}">${label}</button>`;
-            const quick = locked ? '' : `<div class="c-quick">${q('exam', '고사장', '고사장 지정: 남은 시험 분반을 이 교실에 배치')}${q('wait', '자습실', '자습실 지정: 남은 미응시 학생을 수용인원까지 배치')}${q('void', '빈 교실', '빈 교실 지정: 이 교시에는 비워 둠')}</div>`;
+            const quick = locked || S.isCellLocked(slot.key, i) ? '' : `<div class="c-quick">${q('exam', '고사장', '고사장 지정: 남은 시험 분반을 이 교실에 배치')}${q('wait', '자습실', '자습실 지정: 남은 미응시 학생을 수용인원까지 배치')}${q('void', '빈 교실', '빈 교실 지정: 이 교시에는 비워 둠')}</div>`;
             const iss = issueAt(slot.key, i);
             if (iss.length) cls += ' issue';
+            const cLock = !locked && S.isCellLocked(slot.key, i);
+            if (cLock) cls += ' cell-locked';
             if (gapAfter(i)) cls += ' gap-after';
             const tips = iss.map((x) => x.msg);
             if (/\bover\b/.test(cls) && !locked) tips.unshift(`최대 수용인원 ${capN}명 초과 — 인원 ▸ 를 눌러 학생을 옮기거나 [인원 맞추기]를 누르세요.`);
-            return `<td class="pl-cell ${cls}" ${tips.length ? `title="${h(tips.join(' / '))}"` : ''} ${iss.length ? 'data-issue="1"' : ''} data-act="pl-cell" data-k="${slot.key}" data-i="${i}" ${!locked && v && v !== C.VOID_CELL ? 'data-drag="cell"' : ''} data-drop="pl" ><div class="c-body">${inner}</div>${quick}</td>`;
+            return `<td class="pl-cell ${cls}" ${tips.length ? `title="${h(tips.join(' / '))}"` : ''} ${iss.length ? 'data-issue="1"' : ''} data-act="pl-cell" data-k="${slot.key}" data-i="${i}" ${!locked && !cLock && v && v !== C.VOID_CELL ? 'data-drag="cell"' : ''} data-drop="pl" >${locked || S.isLocked(slot.key) ? '' : `<button class="cell-lock ${cLock ? 'on' : ''}" data-act="pl-cell-lock" data-k="${slot.key}" data-i="${i}" title="${cLock ? '잠금 풀기: 다시 자동 배치·인원 맞추기·편집으로 바뀔 수 있습니다' : '이 칸 잠그기: 자동 배치·인원 맞추기·비우기를 해도 바뀌지 않습니다'}" aria-label="${cLock ? '칸 잠금 풀기' : '칸 잠그기'}">${cLock ? LOCK_ON : LOCK_OFF}</button>`}<div class="c-body">${inner}</div>${quick}</td>`;
           }).join('')}
         </tr>`;
       }).join('');
@@ -1015,6 +1017,10 @@
       },
       'pl-gap-edit'() { ui.gapEdit = !ui.gapEdit; if (ui.gapEdit) U.toast('교실 이름 오른쪽의 ⇹ 를 누르면 그 사이가 띄워집니다. 다시 누르면 붙습니다.', 'ok'); rerender(); },
       'pl-gap'(el) { S.toggleRoomGap(+el.dataset.i); },
+      'pl-cell-lock'(el) {
+        const on = S.toggleCellLock(el.dataset.k, +el.dataset.i);
+        U.toast(on ? '이 칸을 잠갔습니다. 자동 배치·인원 맞추기·비우기를 해도 바뀌지 않습니다.' : '칸 잠금을 풀었습니다.', 'ok');
+      },
       'pl-lock'(el) { const k = el.dataset.k; S.toggleLock(k); U.toast(`${S.slots().find((x) => x.key === k).title}: ${S.isLocked(k) ? '잠갔습니다. 자동 배치·편집으로 바뀌지 않습니다.' : '잠금을 풀었습니다.'}`, 'ok'); },
       'pl-lock-all'(el) { const on = el.dataset.on === '1'; S.setAllLocks(on); U.toast(on ? '모든 교시를 잠갔습니다.' : '모든 교시 잠금을 풀었습니다.', 'ok'); },
       'pl-compact'() { ui.plCompact = !ui.plCompact; rerender(); },
@@ -1170,6 +1176,9 @@
     if (v) ui.gapAsked = true;
     return !!v;
   }
+
+  const LOCK_ON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+  const LOCK_OFF = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>';
 
   async function autoPlaceOne(slot, bulk) {
     const info = S.slotInfo(slot);

@@ -38,6 +38,7 @@
     // 봉투 라벨 모양(table|big), 전체 시간표 용지(A4|B4), 분반 이름 표기(num 1반|neis 편성현황 그대로|ganada 가나다|abc ABC|none 안 씀)
     out: { seatRows: 0, seatOrder: 'col', seatList: true, slipNoteOn: true, slipNote: DEFAULT_SLIP_NOTE, slipSeat: true, labelStyle: 'big', paper: 'A4', secLabel: 'num' },
     plLocks: [],          // 학생 배치에서 잠근 교시 (자동 배치가 바꾸지 않음)
+    cellLocks: [],        // 학생 배치에서 잠근 칸 '회차key|고사실번호' (자동 배치·인원 맞추기·비우기·편집이 바꾸지 않음)
     subjectCodes: {},
     industryContact: {},  // 위탁학생 담임 연락 확인: { 학생key: { at: 시각 } } (시험마다 새로)
     notices: [],
@@ -737,16 +738,32 @@
       const cur = state.placement[slotKey] || [];
       return Array.from({ length: n }, (_, i) => cur[i] || '');
     },
-    setCell(slotKey, i, v) { if (S.isLocked(slotKey)) { U.toast('잠긴 교시입니다. 교시 이름 옆 🔒 을 눌러 잠금을 풀고 고치세요.', 'error'); return { moved: 0, unresolved: [] }; } remember('pl', '고사실 배치 변경'); const c = S.cells(slotKey); c[i] = v; state.placement[slotKey] = c; const b = rebalance(slotKey); commit(); return b; },
+    /** 잠긴 칸 번호 집합 */
+    cellLockSet(slotKey) { const p = slotKey + '|'; return new Set((state.cellLocks || []).filter((x) => x.startsWith(p)).map((x) => Number(x.slice(p.length)))); },
+    isCellLocked: (slotKey, i) => (state.cellLocks || []).includes(`${slotKey}|${i}`),
+    toggleCellLock(slotKey, i) {
+      const k = `${slotKey}|${i}`, l = new Set(state.cellLocks || []);
+      if (l.has(k)) l.delete(k); else l.add(k);
+      state.cellLocks = [...l]; commit();
+      return l.has(k);
+    },
+    setCell(slotKey, i, v) { if (S.isLocked(slotKey)) { U.toast('잠긴 교시입니다. 교시 이름 옆 🔒 을 눌러 잠금을 풀고 고치세요.', 'error'); return { moved: 0, unresolved: [] }; }
+      if (S.isCellLocked(slotKey, i)) { U.toast('잠긴 칸입니다. 칸 오른쪽 위 🔒 를 눌러 잠금을 풀고 고치세요.', 'error'); return { moved: 0, unresolved: [] }; } remember('pl', '고사실 배치 변경'); const c = S.cells(slotKey); c[i] = v; state.placement[slotKey] = c; const b = rebalance(slotKey); commit(); return b; },
     /** 한 회차의 여러 칸을 한 번에 바꿈 (되돌리기 한 번) */
-    setCells(slotKey, cells, label) { if (S.isLocked(slotKey)) { U.toast('잠긴 교시입니다. 교시 이름 옆 🔒 을 눌러 잠금을 풀고 고치세요.', 'error'); return { moved: 0, unresolved: [] }; } remember('pl', label || '고사실 배치 변경'); state.placement[slotKey] = cells.slice(); const b = rebalance(slotKey); commit(); return b; },
-    swapCells(slotKey, i, j) { if (S.isLocked(slotKey)) { U.toast('잠긴 교시입니다. 교시 이름 옆 🔒 을 눌러 잠금을 풀고 고치세요.', 'error'); return { moved: 0, unresolved: [] }; } remember('pl', '고사실 맞바꾸기'); const c = S.cells(slotKey); [c[i], c[j]] = [c[j], c[i]]; state.placement[slotKey] = c; const b = rebalance(slotKey); commit(); return b; },
+    setCells(slotKey, cells, label) { if (S.isLocked(slotKey)) { U.toast('잠긴 교시입니다. 교시 이름 옆 🔒 을 눌러 잠금을 풀고 고치세요.', 'error'); return { moved: 0, unresolved: [] }; } remember('pl', label || '고사실 배치 변경'); const L = S.cellLockSet(slotKey), cur = S.cells(slotKey); state.placement[slotKey] = cells.map((v, i) => (L.has(i) ? cur[i] : v)); const b = rebalance(slotKey); commit(); return b; },
+    swapCells(slotKey, i, j) { if (S.isLocked(slotKey)) { U.toast('잠긴 교시입니다. 교시 이름 옆 🔒 을 눌러 잠금을 풀고 고치세요.', 'error'); return { moved: 0, unresolved: [] }; }
+      if (S.isCellLocked(slotKey, i) || S.isCellLocked(slotKey, j)) { U.toast('잠긴 칸은 옮기거나 바꿀 수 없습니다. 칸 오른쪽 위 🔒 를 눌러 잠금을 푸세요.', 'error'); return { moved: 0, unresolved: [] }; } remember('pl', '고사실 맞바꾸기'); const c = S.cells(slotKey); [c[i], c[j]] = [c[j], c[i]]; state.placement[slotKey] = c; const b = rebalance(slotKey); commit(); return b; },
     /** 띄워진 공간 켜기/끄기 (i번째 고사실 오른쪽) */
     toggleRoomGap(i) { remember('pl', '띄워진 공간'); const g = new Set(state.roomGaps); if (g.has(i)) g.delete(i); else g.add(i); state.roomGaps = [...g].sort((a, b) => a - b); commit(); },
-    clearSlot(slotKey) { if (S.isLocked(slotKey)) return U.toast('잠긴 교시입니다. 교시 이름 옆 🔒 을 눌러 잠금을 풀고 고치세요.', 'error'); remember('pl', '교시 배치 비우기'); delete state.moves[slotKey]; state.placement[slotKey] = []; commit(); },
+    clearSlot(slotKey) { if (S.isLocked(slotKey)) return U.toast('잠긴 교시입니다. 교시 이름 옆 🔒 을 눌러 잠금을 풀고 고치세요.', 'error'); remember('pl', '교시 배치 비우기'); delete state.moves[slotKey]; const L = S.cellLockSet(slotKey); state.placement[slotKey] = L.size ? S.cells(slotKey).map((v, i) => (L.has(i) ? v : '')) : []; if (L.size) rebalance(slotKey); commit(); },
     clearAllPlacement() {
       remember('pl', '배치 전체 삭제');
-      for (const k of Object.keys(state.placement)) if (!S.isLocked(k)) { delete state.placement[k]; delete state.moves[k]; }
+      for (const k of Object.keys(state.placement)) {
+        if (S.isLocked(k)) continue;
+        const L = S.cellLockSet(k);
+        delete state.moves[k];
+        if (L.size) { state.placement[k] = S.cells(k).map((v, i) => (L.has(i) ? v : '')); rebalance(k); } else delete state.placement[k];
+      }
       commit();
     },
     /** 모든 교시 자동 배치 (되돌리기 한 번으로 전체 복원) */
@@ -754,9 +771,10 @@
       remember('pl', fresh ? '전체 다시 자동 배치' : '전체 자동 배치');
       for (const slot of S.slots()) {
         if (S.isLocked(slot.key)) continue; // 잠긴 교시는 그대로
-        if (fresh) { state.placement[slot.key] = []; delete state.moves[slot.key]; }
+        const L = S.cellLockSet(slot.key);
+        if (fresh) { state.placement[slot.key] = L.size ? S.cells(slot.key).map((v, i) => (L.has(i) ? v : '')) : []; delete state.moves[slot.key]; }
         const info = S.slotInfo(slot);
-        state.placement[slot.key] = C.autoPlaceSlot(slot, S.cells(slot.key), { rooms: state.rooms, sbMap: S.sbMap(), info, gaps: state.roomGaps }, false, state.options.autoMode);
+        state.placement[slot.key] = C.autoPlaceSlot(slot, S.cells(slot.key), { rooms: state.rooms, sbMap: S.sbMap(), info, gaps: state.roomGaps, locked: L }, false, state.options.autoMode);
         rebalance(slot.key);
       }
       commit();
@@ -765,7 +783,7 @@
       if (S.isLocked(slot.key)) return U.toast('잠긴 교시입니다. 교시 이름 옆 🔒 을 눌러 잠금을 풀고 고치세요.', 'error');
       remember('pl', `${slot.title} 자동 배치`);
       const info = S.slotInfo(slot);
-      state.placement[slot.key] = C.autoPlaceSlot(slot, S.cells(slot.key), { rooms: state.rooms, sbMap: S.sbMap(), info, gaps: state.roomGaps }, useExtra, state.options.autoMode);
+      state.placement[slot.key] = C.autoPlaceSlot(slot, S.cells(slot.key), { rooms: state.rooms, sbMap: S.sbMap(), info, gaps: state.roomGaps, locked: S.cellLockSet(slot.key) }, useExtra, state.options.autoMode);
       rebalance(slot.key);
       commit();
     },
@@ -1003,7 +1021,7 @@
     const slot = C.placeSlots(state.timetable).find((x) => x.key === slotKey);
     if (!slot) return { moved: 0, unresolved: [] };
     cache.clear();
-    const ctx = { rooms: state.rooms, sbMap: C.subjectBanMap(state.subjectClasses), students: S.students(), idx: C.studentIndex(state.rows), waitMode: state.options.waitMode };
+    const ctx = { rooms: state.rooms, sbMap: C.subjectBanMap(state.subjectClasses), students: S.students(), idx: C.studentIndex(state.rows), waitMode: state.options.waitMode, locked: S.cellLockSet(slotKey) };
     const r = C.balanceMoves(ctx, slot, S.cells(slotKey));
     if (r.moved) state.moves[slotKey] = r.moves; else delete state.moves[slotKey];
     return r;
@@ -1013,7 +1031,7 @@
     remember('pl', '정원 맞추기');
     const slot = C.placeSlots(state.timetable).find((x) => x.key === slotKey);
     let w = { added: 0, removed: 0, short: 0 };
-    if (slot) { w = C.fitWaits(S.cells(slotKey), state.rooms, S.slotInfo(slot)); state.placement[slotKey] = w.cells; }
+    if (slot) { w = C.fitWaits(S.cells(slotKey), state.rooms, S.slotInfo(slot), true, S.cellLockSet(slotKey)); state.placement[slotKey] = w.cells; }
     const r = rebalance(slotKey);
     commit();
     return { ...r, waitAdded: w.added, waitRemoved: w.removed, waitShort: w.short };

@@ -343,7 +343,7 @@
     if (!t || !drag) return false;
     const kind = t.dataset.drop;
     if (drag.type === 'subject') return kind === 'tt' || kind === 'tt-remain';
-    if (drag.type === 'cell') return kind === 'pl' && t.dataset.k === drag.k;
+    if (drag.type === 'cell') return kind === 'pl' && t.dataset.k === drag.k && !t.classList.contains('cell-locked');
     return false;
   };
   const targetAt = (x, y) => { const el = document.elementFromPoint(x, y); const t = el && el.closest('[data-drop]'); return { el, t: dropOk(t) ? t : null }; };

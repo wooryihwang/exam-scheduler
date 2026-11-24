@@ -515,15 +515,25 @@
    *    남은 과목-반 → 빈 고사실 순서대로, 남은 미응시 인원 → 고사실 최대 수용인원까지 대기실로 배치
    */
   function autoPlaceSlot(slot, cellsIn, ctx, useExtra, mode = 'class') {
+    const locked = ctx.locked && ctx.locked.size ? ctx.locked : null;
+    if (!locked) return autoPlaceSlot0(slot, cellsIn, ctx, useExtra, mode);
+    // 잠긴 칸: 그 고사실을 '쓸 수 없음'으로 가려 자동 배치가 건드리지 않게 하고(자습 인원은 그대로 셈), 끝에 원래 값을 지킨다
+    const rooms = ctx.rooms.map((r, i) => (locked.has(i) ? { ...r, name: '' } : r));
+    const out = autoPlaceSlot0(slot, ctx.rooms.map((_, i) => cellsIn[i] || ''), { ...ctx, rooms }, useExtra, mode);
+    locked.forEach((i) => { out[i] = cellsIn[i] || ''; });
+    return out;
+  }
+  function autoPlaceSlot0(slot, cellsIn, ctx, useExtra, mode) {
+    const fixed = ctx.locked || null;
     // 자습 교시: 학생마다 자기 반 교실에서 자습
     if (!slot.subjects.length) {
-      if (cellsIn.some(Boolean)) return fitWaits(cellsIn, ctx.rooms, ctx.info).cells;
-      const cells = ctx.rooms.map((r) => { const n = isClassRoom(r) ? ctx.info.waitByBan[r.ban] || 0 : 0; return n ? waitCell(Math.min(n, Number(r.cap) || n)) : ''; });
-      return fitWaits(cells, ctx.rooms, ctx.info).cells;
+      if (cellsIn.some(Boolean)) return fitWaits(cellsIn, ctx.rooms, ctx.info, true, fixed).cells;
+      const cells = ctx.rooms.map((r, i) => { if (fixed && fixed.has(i)) return cellsIn[i] || ''; const n = isClassRoom(r) ? ctx.info.waitByBan[r.ban] || 0 : 0; return n ? waitCell(Math.min(n, Number(r.cap) || n)) : ''; });
+      return fitWaits(cells, ctx.rooms, ctx.info, true, fixed).cells;
     }
     // 이미 있는 대기실의 빈자리를 먼저 채운 뒤(새 교실은 열지 않음) 자동 배치, 마지막에 자습 인원 합계를 맞춤
-    const pre = cellsIn.some((v) => parseCell(v).type === 'wait') ? fitWaits(cellsIn, ctx.rooms, ctx.info, false).cells : cellsIn;
-    return fitWaits(autoPlaceBy(slot, pre, ctx, useExtra, mode), ctx.rooms, ctx.info).cells;
+    const pre = cellsIn.some((v) => parseCell(v).type === 'wait') ? fitWaits(cellsIn, ctx.rooms, ctx.info, false, fixed).cells : cellsIn;
+    return fitWaits(autoPlaceBy(slot, pre, ctx, useExtra, mode), ctx.rooms, ctx.info, true, fixed).cells;
   }
   function autoPlaceBy(slot, cellsIn, ctx, useExtra, mode) {
     if (mode === 'original') return autoPlaceOriginal(slot, cellsIn, ctx, useExtra);
@@ -597,12 +607,14 @@
    * 그래도 모자라면 빈 칸 교실(학반 교실 → 특별실) → '빈 교실'(완충) 순서로 대기실을 늘린다.
    * 넘치면 인원이 가장 많은 대기실부터 줄인다. → { cells, added, removed, short }
    */
-  function fitWaits(cellsIn, rooms, info, grow = true) {
+  function fitWaits(cellsIn, rooms, info, grow = true, fixed = null) {
     const cells = rooms.map((_, i) => cellsIn[i] || '');
     const cap = (i) => Number(rooms[i].cap) || Infinity;
+    const isFixed = (i) => !!(fixed && fixed.has(Number(i)));
     const count = {};
-    cells.forEach((v, i) => { const c = parseCell(v); if (c.type === 'wait') count[i] = c.count; });
-    const total = () => Object.values(count).reduce((t, n) => t + n, 0);
+    let fixedN = 0; // 잠긴 칸의 자습 인원: 합계에는 넣되 바꾸지 않음
+    cells.forEach((v, i) => { const c = parseCell(v); if (c.type === 'wait') { if (isFixed(i)) fixedN += c.count; else count[i] = c.count; } });
+    const total = () => fixedN + Object.values(count).reduce((t, n) => t + n, 0);
     let added = 0, removed = 0;
     const fill = () => {
       while (total() < info.wait) {
@@ -613,7 +625,7 @@
       return true;
     };
     if (!fill() && grow) {
-      const usable = rooms.map((r, i) => (isRoomUsable(r) ? i : -1)).filter((i) => i >= 0);
+      const usable = rooms.map((r, i) => (isRoomUsable(r) && !isFixed(i) ? i : -1)).filter((i) => i >= 0);
       const spare = [
         ...usable.filter((i) => !cells[i] && isClassRoom(rooms[i])),
         ...usable.filter((i) => !cells[i] && !isClassRoom(rooms[i])),
@@ -622,7 +634,8 @@
       for (const i of spare) { if (total() >= info.wait) break; count[i] = 0; if (fill()) break; }
     }
     while (total() > info.wait) {
-      const i = Object.keys(count).map(Number).sort((a, b) => count[b] - count[a] || b - a)[0];
+      const i = Object.keys(count).map(Number).filter((j) => count[j] > 0).sort((a, b) => count[b] - count[a] || b - a)[0];
+      if (i == null) break;
       count[i]--; removed++;
     }
     // 0명이 된 칸: 원래 '빈 교실'이면 그대로 두고, 대기실이었으면 비운다
@@ -981,8 +994,9 @@
     const { rooms } = ctx;
     const base = slotRoster(ctx, slot, cells, {});
     const cap = (i) => Number(rooms[i].cap) || Infinity;
-    const groups = new Map(); // 같은 과목 시험실끼리, 자습실끼리
+    const groups = new Map(); // 같은 과목 시험실끼리, 자습실끼리 (잠긴 칸은 학생을 보내지도 받지도 않음)
     for (const [i, r] of base.rooms) {
+      if (ctx.locked && ctx.locked.has(i)) continue;
       const g = r.kind === 'wait' ? 'wait' : 'exam:' + r.subject;
       if (!groups.has(g)) groups.set(g, []);
       groups.get(g).push({ i, list: r.list.slice() });

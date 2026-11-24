@@ -229,4 +229,35 @@ const industryTest = () => t('위탁학생: 3학년에서만 · 표시 기억 ·
   assert.strictEqual(S.industryStudents().length, 0);
 });
 
-Promise.all(pending).then(() => { resetTest(); industryTest(); console.log(`\n${pass}개 테스트 통과`); }).catch((e) => { console.error(e); process.exit(1); });
+const cellLockTest = () => t('학생 배치 칸 잠금: 자동 배치·인원 맞추기·비우기에도 그대로', () => {
+  S.newProject('칸잠금'); S.importRows(rows, 'k.xlsx');
+  S.confirmRoster(); S.setAllEval(true); S.confirmSubjects();
+  S.state.dates[0] = S.state.dates[0] || '2026-10-12';
+  S.ttAuto(false); S.confirmTimetable();
+  S.autoPlaceAll(true);
+  const slot = S.slots().find((x) => x.subjects.length && S.cells(x.key).filter(Boolean).length >= 2);
+  assert.ok(slot, '배치된 교시가 있어야 함');
+  const cells0 = S.cells(slot.key);
+  const i = cells0.findIndex((v) => v);
+  // 잠긴 칸을 일부러 다른 값으로 바꾼 뒤 잠근다
+  const other = cells0.findIndex((v, k) => k !== i && v);
+  S.swapCells(slot.key, i, other);
+  const want = S.cells(slot.key)[i];
+  assert.strictEqual(S.toggleCellLock(slot.key, i), true);
+  S.autoPlaceAll(true);
+  assert.strictEqual(S.cells(slot.key)[i], want, '전체 다시 자동 배치 뒤에도 그대로');
+  S.autoPlace(slot, false);
+  assert.strictEqual(S.cells(slot.key)[i], want, '교시 자동 배치 뒤에도 그대로');
+  S.rebalance(slot.key);
+  assert.strictEqual(S.cells(slot.key)[i], want, '인원 맞추기 뒤에도 그대로');
+  S.clearSlot(slot.key);
+  assert.strictEqual(S.cells(slot.key)[i], want, '비우기 뒤에도 그대로');
+  assert.strictEqual(S.cells(slot.key).filter(Boolean).length, 1, '잠기지 않은 칸은 비워짐');
+  // 잠긴 칸은 맞바꿀 수 없음
+  const j = S.cells(slot.key).findIndex((v, k) => k !== i);
+  S.swapCells(slot.key, i, j);
+  assert.strictEqual(S.cells(slot.key)[i], want);
+  assert.strictEqual(S.toggleCellLock(slot.key, i), false);
+});
+
+Promise.all(pending).then(() => { resetTest(); industryTest(); cellLockTest(); console.log(`\n${pass}개 테스트 통과`); }).catch((e) => { console.error(e); process.exit(1); });
