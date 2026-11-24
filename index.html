@@ -19,7 +19,7 @@
 <body>
   <div class="app">
     <aside class="sidebar no-print">
-      <div class="brand">
+      <div class="brand" data-act="go" data-view="home" role="button" tabindex="0" title="첫 화면: 학교 이름 · 저장 폴더 · 작업 파일 · 초기화">
         <div class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3l2.2 5.2 5.6.5-4.3 3.7 1.3 5.5L12 15l-4.8 2.9 1.3-5.5L4.2 8.7l5.6-.5z"/></svg>
         </div>
@@ -58,14 +58,10 @@
             설정
           </button>
         </div>
-        <div class="foot-row3">
-          <button class="btn text danger-text" data-act="reset-grade" title="고른 학년 작업만 비웁니다 (다른 학년은 그대로)">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
-            학년별 초기화
-          </button>
-          <button class="btn text danger-text strong" data-act="reset-everything" title="1·2·3학년 모든 작업을 한꺼번에 비웁니다">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg>
-            전체 초기화
+        <div class="foot-row3 one">
+          <button class="btn text" data-act="go" data-view="home" title="학교 이름, 저장 폴더, 작업 파일, 학년별·전체 초기화">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+            첫 화면 · 저장 폴더 · 초기화
           </button>
         </div>
         <p class="side-note">데이터는 이 브라우저에만 저장되며 서버로 전송되지 않습니다.</p>
@@ -87,7 +83,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script>
-    ['core', 'util', 'store', 'sample', 'views', 'special', 'outputs', 'main']
+    ['core', 'util', 'store', 'sample', 'views', 'special', 'outputs', 'home', 'main']
       .forEach((f) => document.write('<script src="js/' + f + '.js?v=' + window.__v + '"><\/script>'));
   </script>
 </body>

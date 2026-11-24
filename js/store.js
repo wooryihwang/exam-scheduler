@@ -301,6 +301,11 @@
     /** 학교 이름: 모든 학년 작업 공간에 공통 (출력물 머리에 인쇄) */
     school: () => index.school || '',
     setSchool(v) { index.school = String(v || '').trim(); writeJSON(INDEX_KEY, index); commit(); },
+    /** 작업 파일을 넣을 폴더 이름 (첫 화면에서 정함, 모든 학년 공통) */
+    saveFolder: () => (index.saveFolder === undefined ? '고사시간표 작업파일' : index.saveFolder),
+    setSaveFolder(v) { index.saveFolder = String(v || '').replace(/[\\/:*?"<>|]/g, '').trim(); writeJSON(INDEX_KEY, index); commit(); },
+    /** 작업 공간에 지정된 별도 고사실 학생 수 */
+    projectSpecialCount(id) { const x = id === index.current ? state : readJSON(pKey(id)); return Object.keys((x && x.special && x.special.students) || {}).length; },
     /** 현재 작업의 학년(1~3): 편성 데이터 → 작업 이름 순으로 판단, 모르면 0 */
     currentGrade() {
       const g = C.val(state.rows[0] && state.rows[0].학년) || C.val(S.currentProject()?.name);
@@ -403,8 +408,9 @@
 
     // ------------------------------------------------ 1. 학생편성현황
     importRows(rows, fileName) {
-      const keep = { dates: state.dates, times: state.times, title: state.title, seatCols: state.seatCols, rooms: state.rooms, classCap: state.classCap, examDays: state.examDays, periods: state.periods, extraHolidays: state.extraHolidays, roomGaps: state.roomGaps };
+      const keep = { dates: state.dates, times: state.times, title: state.title, seatCols: state.seatCols, rooms: state.rooms, classCap: state.classCap, examDays: state.examDays, periods: state.periods, extraHolidays: state.extraHolidays, roomGaps: state.roomGaps, special: state.special };
       state = Object.assign(blank(), keep, { rows, fileName });
+      if (keep.special) state.special = keep.special;
       autoName();
       commit();
     },
@@ -947,19 +953,28 @@
     industryUncontacted: () => S.industryStudents().filter((x) => !S.industryContact(x.key)),
     /** 수동 저장: 지금 상태를 기록으로 남긴다 */
     saveManual: () => autoBackup('수동 저장', 'manual'),
-    /** 작업 공간 하나를 비운다 (목록·이름은 그대로). 열려 있는 작업이면 화면도 바로 비운다 */
-    resetProject(id) {
+    /**
+     * 작업 공간 하나를 비운다 (목록·이름은 그대로). 열려 있는 작업이면 화면도 바로 비운다.
+     * keep: 별도 고사실 학생 지정과 위탁학생 명단은 남긴다 (편성현황을 다시 불러오면 그대로 표시)
+     * keep 이 아니면 별도 고사실 지정을 지우고, 3학년이면 위탁학생 명단도 지운다
+     */
+    resetProject(id, { keep = false } = {}) {
       const p = index.list.find((x) => x.id === id); if (!p) return;
-      if (id === index.current) { state = blank(); undoStack = []; redoStack = []; }
-      else writeJSON(pKey(id), blank());
+      const old = id === index.current ? state : readJSON(pKey(id));
+      const n = blank();
+      if (keep && old && old.special) n.special = { rooms: old.special.rooms || n.special.rooms, students: old.special.students || {} };
+      if (!keep) { const g3 = S.projectOfGrade(3); if (g3 && g3.id === id) index.industry = []; }
+      if (id === index.current) { state = n; undoStack = []; redoStack = []; }
+      else writeJSON(pKey(id), n);
       p.fileName = '';
       writeJSON(INDEX_KEY, index);
       commit();
     },
-    /** 모든 작업 공간을 비운다. 학년 이름·학교 이름·화면 설정은 남긴다 */
-    resetEverything() {
-      for (const p of index.list) { if (p.id !== index.current) writeJSON(pKey(p.id), blank()); p.fileName = ''; }
-      state = blank(); undoStack = []; redoStack = [];
+    /** 모든 작업 공간을 비운다. 학년 이름·학교 이름·저장 폴더·화면 설정은 남긴다. keep 은 resetProject 와 같음 */
+    resetEverything({ keep = false } = {}) {
+      const ids = index.list.map((p) => p.id);
+      for (const id of ids) S.resetProject(id, { keep });
+      if (!keep) index.industry = [];
       writeJSON(INDEX_KEY, index);
       commit();
     },

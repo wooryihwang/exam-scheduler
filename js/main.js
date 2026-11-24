@@ -45,7 +45,7 @@
   const SEL_BADGE = { special: '선택' };
   function renderNav() {
     renderProjects();
-    const steps = views.filter((v) => v.id !== 'outputs');
+    const steps = views.filter((v) => v.id !== 'outputs' && v.id !== 'home');
     const out = views.find((v) => v.id === 'outputs');
     const tabs = (V.outputsTabs && V.outputsTabs()) || [];
     const curTab = V.outputsTab ? V.outputsTab() : '';
@@ -99,6 +99,7 @@
   V.setRerender(render);
   V.setOutputsRerender(render);
   V.setSpecialRerender && V.setSpecialRerender(render);
+  V.setHomeRerender && V.setHomeRerender(() => { if (current === 'home') render(); });
   S.subscribe(() => render(true));
 
   function go(id) {
@@ -115,8 +116,12 @@
     if (!json) return;
     const d = new Date();
     const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
-    U.download(`고사배치_${p.name}_${stamp}.json`, json);
+    U.saveWork(`고사배치_${p.name}_${stamp}.json`, json);
   }
+  /** 초기화 방식 고르기: 위탁학생·별도 고사실 학생 남기기 / 모두 */
+  const keepOpts = (keep, withIndustry) => `<div class="rs-keep">
+      <label class="rs-opt keep"><input type="radio" name="rs-keep" value="1" ${keep ? 'checked' : ''}><b>${withIndustry ? '위탁학생·별도 고사실 학생은 그대로 두고 초기화' : '별도 고사실 학생은 그대로 두고 초기화'}</b><span class="muted sm">편성현황을 다시 불러오면 그대로 표시됩니다</span></label>
+      <label class="rs-opt"><input type="radio" name="rs-keep" value="0" ${keep ? '' : 'checked'}><b>모두 초기화</b><span class="muted sm">${withIndustry ? '위탁학생 명단·' : ''}별도 고사실 지정까지 지웁니다</span></label></div>`;
   const globalActions = {
     go(el) { go(el.dataset.view); },
     'toggle-nav'() { document.body.classList.toggle('nav-open'); },
@@ -228,50 +233,69 @@
       if (!S.state.rows.length) return U.toast('저장할 데이터가 없습니다.', 'error');
       const d = new Date();
       const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
-      U.download(`고사배치_${S.currentProject().name}_${stamp}.json`, S.exportJSON());
+      U.saveWork(`고사배치_${S.currentProject().name}_${stamp}.json`, S.exportJSON());
+    },
+    /** 첫 화면: 작업 파일 내려받기 (한 학년 / 모든 학년) */
+    'dl-project'(el) {
+      const p = S.projects().find((x) => x.id === el.dataset.id);
+      if (!p || !S.projectHasRows(p.id)) return U.toast('그 학년에는 저장할 자료가 없습니다.', 'error');
+      downloadProject(p);
+    },
+    'dl-all'() {
+      const list = S.projects().filter((p) => S.projectHasRows(p.id));
+      if (!list.length) return U.toast('저장할 자료가 없습니다.', 'error');
+      list.forEach((p) => downloadProject(p));
     },
     /** 학년별 초기화: 고른 학년(작업 공간)만 비운다 */
-    async 'reset-grade'() {
+    async 'reset-grade'(el) {
       const list = S.projects();
       const cur = S.currentProject();
-      let pick = cur.id;
+      let pick = (el && el.dataset && el.dataset.id && list.some((p) => p.id === el.dataset.id)) ? el.dataset.id : cur.id;
+      let keep = !(el && el.dataset && el.dataset.keep === '0');
+      const g3 = S.projectOfGrade(3);
       const row = (p) => {
         const has = S.projectHasRows(p.id), file = S.projectFile(p);
+        const spN = S.projectSpecialCount(p.id), indN = g3 && g3.id === p.id ? S.industryList().length : 0;
+        const extra = [spN ? `별도 고사실 ${spN}명` : '', indN ? `위탁학생 ${indN}명` : ''].filter(Boolean).join(' · ');
         return `<label class="rs-opt ${has ? '' : 'empty'}"><input type="radio" name="rs-pick" value="${p.id}" ${p.id === pick ? 'checked' : ''}>
-          <b>${h(p.name)}</b><span class="muted sm">${has ? (file ? h(file) : '작업 있음') : '비어 있음'}${p.id === cur.id ? ' · 지금 여는 작업' : ''}</span></label>`;
+          <b>${h(p.name)}</b><span class="muted sm">${has ? (file ? h(file) : '작업 있음') : '비어 있음'}${extra ? ` · ${extra}` : ''}${p.id === cur.id ? ' · 지금 여는 작업' : ''}</span></label>`;
       };
       const v = await U.modal({
         title: '학년별 초기화',
         body: `<p>비울 학년을 고르세요. 그 학년의 학생편성현황·시간표·배치·응시현황·고사실·시간 설정이 모두 지워지고, <b>다른 학년 작업은 그대로</b> 남습니다.</p>
           <div class="rs-list">${list.map(row).join('')}</div>
-          <p class="hint">※ 되돌릴 수 없습니다. 필요하면 <b>파일 저장 후 초기화</b>를 누르세요. (단계를 확정할 때 남은 스냅샷은 '자동 저장 &amp; 스냅샷'에서 복구할 수 있습니다)</p>`,
+          <h4 class="rs-h">초기화 방식</h4>${keepOpts(keep, !!g3)}
+          <p class="hint">※ 되돌릴 수 없습니다. 필요하면 <b>파일 저장 후 초기화</b>를 누르세요. (자동 저장 기록은 남아 있어 <b>저장 기록</b>에서 되돌릴 수 있습니다)</p>`,
         buttons: [{ label: '취소', value: null }, { label: '파일 저장 후 초기화', value: 'backup' }, { label: '이 학년 초기화', value: 'ok', cls: 'danger-text ghost' }],
-        onMount(m) { m.addEventListener('change', (e) => { if (e.target.name === 'rs-pick') pick = e.target.value; }); },
+        onMount(m) { m.addEventListener('change', (e) => { if (e.target.name === 'rs-pick') pick = e.target.value; if (e.target.name === 'rs-keep') keep = e.target.value === '1'; }); },
       });
       if (!v) return;
       const p = list.find((x) => x.id === pick);
       if (!p) return;
       if (v === 'backup') downloadProject(p);
-      S.resetProject(p.id);
-      if (p.id === S.currentProject().id) go('roster');
-      U.toast(`「${p.name}」 작업을 초기화하였습니다.`, 'ok');
+      S.resetProject(p.id, { keep });
+      if (p.id === S.currentProject().id && current !== 'home') go('roster'); else render();
+      U.toast(`「${p.name}」 작업을 초기화하였습니다.${keep ? ' (위탁학생·별도 고사실 학생은 남김)' : ''}`, 'ok');
     },
     /** 전체 초기화: 모든 학년 작업을 비운다 (학교 이름 등 설정은 남김) */
-    async 'reset-everything'() {
+    async 'reset-everything'(el) {
       const list = S.projects();
       const withData = list.filter((p) => S.projectHasRows(p.id));
+      let keep = !(el && el.dataset && el.dataset.keep === '0');
       const v = await U.modal({
         title: '전체 초기화',
         body: `<p><b>모든 학년</b>의 작업을 한꺼번에 비웁니다.${withData.length ? ` 지금 자료가 있는 작업: <b>${withData.map((p) => h(p.name)).join(', ')}</b>` : ' 지금은 자료가 있는 작업이 없습니다.'}</p>
-          <p>학년 이름, 학교 이름과 화면 설정은 남습니다.</p>
+          <p>학년 이름, 학교 이름, 저장 폴더와 화면 설정은 남습니다.</p>
+          <h4 class="rs-h">초기화 방식</h4>${keepOpts(keep, true)}
           <p class="hint danger-hint">※ 되돌릴 수 없습니다. 필요하면 <b>모든 학년 파일 저장 후 초기화</b>를 누르세요. 학년마다 작업 파일이 하나씩 내려받아집니다.</p>`,
         buttons: [{ label: '취소', value: null }, ...(withData.length ? [{ label: '모든 학년 파일 저장 후 초기화', value: 'backup' }] : []), { label: '전체 초기화', value: 'ok', cls: 'danger' }],
+        onMount(m) { m.addEventListener('change', (e) => { if (e.target.name === 'rs-keep') keep = e.target.value === '1'; }); },
       });
       if (!v) return;
-      if (!(await U.confirm('정말 모든 학년 작업을 지울까요?', '전체 초기화', '모두 지우기'))) return;
+      if (!(await U.confirm(keep ? '정말 모든 학년 작업을 지울까요?\n(위탁학생·별도 고사실 학생 지정은 남깁니다)' : '정말 모든 학년 작업을 지울까요?\n위탁학생 명단과 별도 고사실 지정까지 모두 지웁니다.', '전체 초기화', '모두 지우기'))) return;
       if (v === 'backup') withData.forEach((p) => downloadProject(p));
-      S.resetEverything(); go('roster');
-      U.toast('모든 학년 작업을 초기화하였습니다.', 'ok');
+      S.resetEverything({ keep }); if (current !== 'home') go('roster'); else render();
+      U.toast(`모든 학년 작업을 초기화하였습니다.${keep ? ' (위탁학생·별도 고사실 학생은 남김)' : ''}`, 'ok');
     },
     undo() { doUndo(false); },
     'proj-new'() { S.newProject(); go('roster'); U.toast('새 작업 공간을 만들었습니다. 학생편성현황을 불러오면 학년 이름이 붙습니다.', 'ok'); },

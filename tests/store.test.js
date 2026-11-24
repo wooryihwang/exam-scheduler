@@ -204,6 +204,39 @@ const resetTest = () => t('학년별 초기화 · 전체 초기화', () => {
   assert.strictEqual(S.projects().map((p) => p.name).join(','), names);
 });
 
+const resetKeepTest = () => t('초기화: 위탁학생·별도 고사실 학생 남기기 / 모두', () => {
+  const rows3 = C.parseNeis(window.Sample.sampleAoa(3)).rows;
+  S.openGrade(3); S.importRows(rows3, 'k.xlsx');
+  const g3 = S.currentProject().id;
+  const [a, b] = S.rosterStudents();
+  S.setSpecialStudent(a.key, 1);
+  S.setIndustry(b, true);
+  assert.strictEqual(S.projectSpecialCount(g3), 1);
+  // 남기고 초기화 → 자료는 비지만 지정은 남고, 다시 불러오면 그대로
+  S.resetProject(g3, { keep: true });
+  assert.strictEqual(S.state.rows.length, 0);
+  assert.strictEqual(S.projectSpecialCount(g3), 1);
+  assert.ok(S.industryList().length >= 1);
+  S.importRows(rows3, 'k2.xlsx');
+  assert.ok(S.state.special.students[a.key]);
+  assert.strictEqual(S.isIndustry(b), true);
+  // 모두 초기화 → 별도 고사실 지정·위탁학생 명단까지 지움
+  S.resetProject(g3);
+  assert.strictEqual(S.projectSpecialCount(g3), 0);
+  assert.strictEqual(S.industryList().length, 0);
+  // 전체 초기화 keep
+  S.importRows(rows3, 'k3.xlsx'); S.setSpecialStudent(a.key, 2); S.setIndustry(b, true);
+  S.resetEverything({ keep: true });
+  assert.strictEqual(S.projectSpecialCount(g3), 1);
+  assert.strictEqual(S.industryList().length, 1);
+  S.resetEverything();
+  assert.strictEqual(S.projectSpecialCount(g3), 0);
+  assert.strictEqual(S.industryList().length, 0);
+  // 저장 폴더 이름: 금지 글자 제거
+  S.setSaveFolder('고사/작업:파일');
+  assert.strictEqual(S.saveFolder(), '고사작업파일');
+});
+
 const industryTest = () => t('위탁학생: 3학년에서만 · 표시 기억 · 연락 확인', () => {
   const rows3 = C.parseNeis(window.Sample.sampleAoa(3)).rows;
   // 1학년 작업에서는 기능이 꺼짐
@@ -263,4 +296,4 @@ const cellLockTest = () => t('학생 배치 칸 잠금: 자동 배치·인원 �
   assert.strictEqual(S.toggleCellLock(slot.key, i), false);
 });
 
-Promise.all(pending).then(() => { resetTest(); industryTest(); cellLockTest(); console.log(`\n${pass}개 테스트 통과`); }).catch((e) => { console.error(e); process.exit(1); });
+Promise.all(pending).then(() => { resetTest(); industryTest(); cellLockTest(); resetKeepTest(); console.log(`\n${pass}개 테스트 통과`); }).catch((e) => { console.error(e); process.exit(1); });

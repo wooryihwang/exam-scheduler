@@ -716,3 +716,52 @@ body[data-grade="3"] .page { --p-accent: #9b1c1c; }
 .sp-detail-top .input { width: 64px; margin: 0 4px; }
 .sp-detail-preview { max-height: 62vh; overflow: auto; background: #e7e9ee; border-radius: 10px; padding: 12px; }
 .sp-detail-preview .page { zoom: .62; margin: 0 auto; }
+
+/* 첫 화면 */
+.brand[data-act] { cursor: pointer; border-radius: 12px; transition: background .15s; }
+.brand[data-act]:hover { background: rgba(0,0,0,.04); }
+.foot-row3.one { grid-template-columns: 1fr; }
+.foot-row3.one .btn { color: #334155; border-color: #d8dee8; font-weight: 700; }
+.foot-row3.one .btn:hover { background: #f4f6fa; }
+.home { max-width: 1080px; margin: 0 auto; }
+.hm-hero { display: flex; align-items: center; gap: 18px; padding: 22px 24px; margin-bottom: 18px; border-radius: 18px; background: linear-gradient(120deg, #fff 0%, #f6f8fc 100%); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.hm-mark { width: 58px; height: 58px; flex: none; border-radius: 15px; display: grid; place-items: center; color: #fff; background: var(--brand); }
+.hm-hero-text { flex: 1; min-width: 0; }
+.hm-hero h1 { margin: 0 0 4px; font-size: 24px; font-weight: 900; letter-spacing: -.02em; }
+.hm-hero h1 .ver { font-size: 12px; font-weight: 700; color: #64748b; background: #eef2f7; border-radius: 999px; padding: 2px 8px; vertical-align: middle; }
+.hm-hero p { margin: 0; color: #475569; }
+.hm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.hm-card { margin: 0; }
+.hm-card.wide { grid-column: 1 / -1; }
+.hm-card h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 16px; }
+.hm-card h3 svg { color: var(--brand); }
+.hm-card h3 .hm-sub { margin-left: 4px; font-size: 12.5px; font-weight: 500; color: #64748b; }
+.hm-input { width: 100%; font-size: 15px; padding: 9px 12px; }
+.hm-dir { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.hm-dir .hm-input { flex: 1; width: auto; min-width: 160px; }
+.hm-lbl { width: 64px; flex: none; font-size: 13px; font-weight: 700; color: #475569; }
+.hm-where { flex: 1; min-width: 160px; display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: 10px; background: #f4f6fa; font-size: 13.5px; }
+.hm-where.on { background: #ecfdf3; color: #166534; }
+.hm-where svg { width: 16px; height: 16px; flex: none; }
+.hm-grades { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.hm-grade { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; }
+.hm-grade.empty { background: #fafbfc; }
+.hm-gname { width: 64px; flex: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 800; }
+.hm-gname i { width: 9px; height: 9px; border-radius: 50%; background: #94a3b8; }
+.hm-grade.g1 .hm-gname i { background: #22c55e; }
+.hm-grade.g2 .hm-gname i { background: #3b82f6; }
+.hm-grade.g3 .hm-gname i { background: #dc2626; }
+.hm-gfile { flex: 1; min-width: 0; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-tags { margin-left: 8px; }
+.hm-tags em { font-style: normal; font-size: 12px; font-weight: 700; margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: #fff1f1; color: #9b1c1c; }
+.hm-gbtns { display: flex; gap: 6px; flex: none; }
+.hm-gbtns .btn svg, .hm-actions .btn svg { vertical-align: -3px; }
+.hm-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.hm-keep { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.hm-keep .rs-opt.keep:has(input:checked), .rs-keep .rs-opt.keep:has(input:checked) { border-color: #16a34a; background: #f0fdf4; }
+.rs-keep { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
+.rs-h { margin: 12px 0 4px; font-size: 14px; }
+@media (max-width: 860px) { .hm-grid { grid-template-columns: 1fr; } .hm-hero { flex-wrap: wrap; } }
+.hm-gfile { text-align: left; }
+.hm-actions .btn.danger { background: #dc2626; border-color: #dc2626; color: #fff; font-weight: 800; }
+.hm-actions .btn.danger:hover { background: #b91c1c; }

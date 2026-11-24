@@ -77,6 +77,63 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
 
+  // ---------------------------------------------------------------- 저장 폴더 (작업 파일을 넣을 곳)
+  // 크롬·엣지에서는 폴더를 한 번 골라 두면 그 안의 [폴더 이름] 폴더에 작업 파일(JSON)을 바로 저장한다.
+  // 고른 폴더(권한 핸들)는 이 컴퓨터의 브라우저 저장소(IndexedDB)에만 기억한다. 지원하지 않으면 다운로드 폴더로 내려받는다.
+  const KV_DB = 'exam-web-settings';
+  const kv = (mode, fn) => new Promise((ok, fail) => {
+    if (!window.indexedDB) return fail(new Error('no indexedDB'));
+    const r = indexedDB.open(KV_DB, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onerror = () => fail(r.error);
+    r.onsuccess = () => {
+      const tx = r.result.transaction('kv', mode), q = fn(tx.objectStore('kv'));
+      tx.oncomplete = () => { r.result.close(); ok(q && q.result); };
+      tx.onerror = () => { r.result.close(); fail(tx.error); };
+    };
+  });
+  let saveDir = null;
+  const saveDirLoaded = kv('readonly', (s) => s.get('saveDir')).then((x) => { saveDir = x || null; }).catch(() => {});
+  const safeFolder = (s) => String(s || '').replace(/[\\/:*?"<>|]/g, '').trim();
+  U.saveDir = {
+    supported: typeof window.showDirectoryPicker === 'function',
+    loaded: saveDirLoaded,
+    /** 고른 폴더 이름 ('' = 안 고름) */
+    name: () => (saveDir ? saveDir.name : ''),
+    /** 저장 위치 안내 글자: '문서\고사시간표 작업파일' */
+    where: () => { const sub = safeFolder(window.Store && Store.saveFolder ? Store.saveFolder() : ''); return saveDir ? (sub ? `${saveDir.name}\\${sub}` : saveDir.name) : ''; },
+    async pick() {
+      const hd = await window.showDirectoryPicker({ id: 'exam-save', mode: 'readwrite' });
+      saveDir = hd;
+      try { await kv('readwrite', (s) => s.put(hd, 'saveDir')); } catch (e) { /* 기억 못 해도 이번 실행에서는 씀 */ }
+      return hd.name;
+    },
+    async clear() { saveDir = null; try { await kv('readwrite', (s) => s.delete('saveDir')); } catch (e) { /* 무시 */ } },
+  };
+  /** 고른 폴더에 파일을 쓴다. 성공하면 저장 위치 글자, 아니면 '' */
+  async function writeToSaveDir(name, blob) {
+    await saveDirLoaded;
+    if (!saveDir) return '';
+    try {
+      let perm = await saveDir.queryPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') perm = await saveDir.requestPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') return '';
+      const sub = safeFolder(window.Store && Store.saveFolder ? Store.saveFolder() : '');
+      const d = sub ? await saveDir.getDirectoryHandle(sub, { create: true }) : saveDir;
+      const fh = await d.getFileHandle(name, { create: true });
+      const w = await fh.createWritable(); await w.write(blob); await w.close();
+      return U.saveDir.where();
+    } catch (e) { return ''; }
+  }
+  /** 작업 파일(JSON) 저장: 저장 폴더를 골라 두었으면 그 폴더에, 아니면 다운로드 폴더로 */
+  U.saveWork = async (name, data) => {
+    const blob = data instanceof Blob ? data : new Blob([data], { type: 'application/json' });
+    const where = await writeToSaveDir(name, blob);
+    if (where) { U.toast(`저장 폴더(${where})에 저장했습니다: ${name}`, 'ok'); return where; }
+    U.download(name, blob);
+    return '';
+  };
+
   U.readFile = (file, as = 'arrayBuffer') => new Promise((res, rej) => {
     const r = new FileReader();
     r.onload = () => res(r.result);
