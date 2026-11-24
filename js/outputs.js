@@ -320,11 +320,12 @@
       <tbody>${rows || '<tr><td colspan="7">시험 보는 과목이 없습니다.</td></tr>'}</tbody></table>
       ${free.length ? `<p class="p-note">· 시험이 없는 날: ${free.join(', ')}</p>` : ''}
       <h4 class="ind-h">연락·확인</h4>
-      <table class="ptbl ind-sign"><colgroup><col style="width:22%"><col style="width:22%"><col style="width:26%"><col></colgroup>
-      <thead><tr><th>확인</th><th>날짜</th><th>방법</th><th>서명</th></tr></thead><tbody>
-        <tr><td class="nm">담임 선생님 연락</td><td>${c ? h(fmtAt(c.at)) : ''}</td><td>전화 · 문자 · 직접</td><td></td></tr>
-        <tr><td class="nm">학생 확인</td><td></td><td></td><td></td></tr>
-        <tr><td class="nm">위탁 기관 담당 선생님</td><td></td><td></td><td></td></tr></tbody></table></div>`;
+      <table class="ptbl ind-sign"><colgroup><col style="width:26%"><col style="width:26%"><col style="width:28%"><col></colgroup>
+      <thead><tr><th>구분</th><th>날짜</th><th>방법</th><th>확인 체크</th></tr></thead><tbody>
+        <tr><td class="nm">담임 선생님 연락</td><td>${c ? h(fmtAt(c.at)) : ''}</td><td>전화 · 문자 · 직접</td><td class="ind-chk">${c ? '☑' : '☐'}</td></tr>
+        <tr><td class="nm">학생 확인</td><td></td><td></td><td class="ind-chk">☐</td></tr>
+        <tr><td class="nm">위탁 기관 담당 선생님</td><td></td><td></td><td class="ind-chk">☐</td></tr></tbody></table>
+      <p class="p-note ind-foot">* 담임선생님께서는 위탁학생 연락이 되었는지 반드시 체크하시고, 연락한 날짜를 기록해 두시기 바랍니다.</p></div>`;
   }
   /** 연락 확인 명단 (평가계용) */
   function pageIndList() {

@@ -666,3 +666,7 @@ body[data-grade="3"] .page { --p-accent: #9b1c1c; }
 .pl-cell .cell-lock.static { cursor: default; }
 .tbl.pl.compact-view .pl-cell .cell-lock { top: 1px; right: 1px; width: 18px; height: 18px; }
 .tbl.pl.compact-view .pl-cell .cell-lock svg { width: 12px; height: 12px; }
+
+/* 10-9 확인 체크 칸 · 아래 안내 */
+.page.indpage .ptbl.ind-sign td.ind-chk { font-size: 18pt; line-height: 1; color: #1f2937; }
+.page.indpage .ind-foot { margin-top: 3mm; border-top: 0; color: var(--p-accent); font-weight: 700; font-size: 10.5pt; }
