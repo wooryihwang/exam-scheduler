@@ -892,7 +892,7 @@
         const ok = stt.status === 'OK' && !stt.problems.length;
         return `<tr>
           <th class="pl-head">
-            <div class="pl-title">${locked ? '' : `<button class="lock-btn ${S.isLocked(slot.key) ? 'on' : ''}" data-act="pl-lock" data-k="${slot.key}" title="${S.isLocked(slot.key) ? '잠금 풀기: 다시 고치거나 자동 배치할 수 있습니다' : '이 교시 잠그기: 자동 배치·편집으로 바뀌지 않게 보호합니다'}">${S.isLocked(slot.key) ? '🔒' : '🔓'}</button>`}${h(slot.title)} ${slotIssues.length ? `<span class="badge bad" data-act="pl-issue-go" data-k="${slot.key}" title="누르면 문제가 있는 칸으로 이동합니다.">문제 ${slotIssues.length}건</span>` : ''}${stt.warnings.length && !locked ? `<span class="badge bad" title="${h(stt.warnings.join('\n'))}&#10;빨간 칸의 인원 ▸ 를 눌러 학생을 옮기거나 [인원 맞추기]를 누르세요.">정원 초과 ${stt.warnings.length}</span>` : ''}${ok ? '<span class="badge ok">완료</span>' : `<span class="badge warn">${h(stt.status === 'OK' ? '확인' : stt.status)}</span>`}</div>
+            <div class="pl-title">${locked ? '' : `<button class="lock-btn ${S.isLocked(slot.key) ? 'on' : ''}" data-act="pl-lock" data-k="${slot.key}" title="${S.isLocked(slot.key) ? '잠금 풀기: 다시 고치거나 자동 배치할 수 있습니다' : '이 교시 잠그기: 자동 배치·편집으로 바뀌지 않게 보호합니다'}">${S.isLocked(slot.key) ? LOCK_ON : LOCK_OFF}</button>`}${h(slot.title)} ${slotIssues.length ? `<span class="badge bad" data-act="pl-issue-go" data-k="${slot.key}" title="누르면 문제가 있는 칸으로 이동합니다.">문제 ${slotIssues.length}건</span>` : ''}${stt.warnings.length && !locked ? `<span class="badge bad" title="${h(stt.warnings.join('\n'))}&#10;빨간 칸의 인원 ▸ 를 눌러 학생을 옮기거나 [인원 맞추기]를 누르세요.">정원 초과 ${stt.warnings.length}</span>` : ''}${ok ? '<span class="badge ok">완료</span>' : `<span class="badge warn">${h(stt.status === 'OK' ? '확인' : stt.status)}</span>`}</div>
             <div class="pl-subj" ${slot.study ? '' : `title="${h(slot.subjects.map(C.onlySubject).join(', '))}"`}>${slot.study ? '<span class="badge info" title="시험이 없는 교시입니다. 학생들은 각자 자기 반 교실에서 자습합니다.">자습 교시 (시험 없음)</span>' : slot.subjects.map((x) => h(C.onlySubject(x))).join(', ')}${nMoved ? ` <span class="badge info">학생 이동 ${nMoved}명</span>` : ''}</div>
             <table class="mini"><tr><td></td><td>반수</td><td>응시</td><td>미응시</td></tr>
               <tr><td>계</td><td>${info.banTotal}</td><td>${info.exam}</td><td>${info.wait}</td></tr>
@@ -970,7 +970,7 @@
             </select></label>
           <button class="icon-btn" data-act="pl-opt-help" title="설명">ⓘ 차이</button>
           <span class="spacer"></span>
-          ${locked ? '' : `<button class="btn ghost sm" data-act="pl-lock-all" data-on="1" title="모든 교시를 잠가 자동 배치·편집으로 바뀌지 않게 합니다">🔒 전체 잠금</button><button class="btn ghost sm" data-act="pl-lock-all" data-on="0" title="모든 교시 잠금을 풉니다">🔓 전체 해제</button>`}
+          ${locked ? '' : `<button class="btn ghost sm" data-act="pl-lock-all" data-on="1" title="모든 교시를 잠가 자동 배치·편집으로 바뀌지 않게 합니다">${LOCK_ON} 전체 잠금</button><button class="btn ghost sm" data-act="pl-lock-all" data-on="0" title="모든 교시 잠금을 풉니다">${LOCK_OFF} 전체 해제</button>`}
           <button class="btn ghost sm" data-act="pl-check-sec" title="교시마다 시험 분반이 어느 고사실에 몇 명 배치되었는지 확인합니다">🔍 분반 점검</button>
           <button class="btn ghost sm" data-act="pl-check-room" title="고사실마다 시험·자습·빈 교실로 쓰인 횟수와 최대 인원을 확인합니다">🪑 고사실 점검</button>
           <button class="btn ${ui.plCompact ? 'primary' : 'ghost'} sm" data-act="pl-compact" title="칸을 작게 줄여 모든 교시·고사실을 한 화면에 봅니다">${ui.plCompact ? '✓ 한눈에 보기' : '🔍 한눈에 보기'}</button>
@@ -1177,8 +1177,9 @@
     return !!v;
   }
 
-  const LOCK_ON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
-  const LOCK_OFF = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>';
+  const LOCK_ON = '<svg class="ico-lock on" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+  // 풀린 자물쇠: 몸통 오른쪽 위에 꽂힌 고리가 오른쪽으로 돌아가 들려 있는 모양
+  const LOCK_OFF = '<svg class="ico-lock off" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 12V7.2a4.3 4.3 0 0 1 8.6 0V10"/><rect x="2.5" y="12" width="13.5" height="9.5" rx="2" fill="currentColor" fill-opacity=".16"/></svg>';
 
   async function autoPlaceOne(slot, bulk) {
     const info = S.slotInfo(slot);

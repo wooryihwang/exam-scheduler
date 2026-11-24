@@ -651,3 +651,10 @@ body[data-grade="3"] .page { --p-accent: #9b1c1c; }
 .pl-cell.cell-locked.over { box-shadow: inset 0 0 0 3px #dc2626 !important; }
 /* 프로그램 이름 옆 버전 */
 .brand-title .ver { display: inline-block; margin-left: 4px; padding: 1px 6px; border-radius: 999px; background: #f1f5f9; color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: 0; vertical-align: 2px; }
+
+/* 자물쇠 그림 (학생 배치) */
+.ico-lock { vertical-align: -2px; flex: none; }
+.lock-btn { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; color: #64748b; }
+.lock-btn.on { color: #b91c1c; }
+.btn .ico-lock.on { color: #b91c1c; }
+.btn .ico-lock.off { color: #64748b; }
