@@ -160,7 +160,31 @@
   });
   const dbAll = (db) => new Promise((ok, fail) => { const rq = db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).getAll(); rq.onsuccess = () => ok(rq.result || []); rq.onerror = () => fail(rq.error); });
   let lastBackup = null;
-  async function autoBackup(label) {
+  // 저장 기록 종류: 자동 저장(2분마다) · 수동 저장 · 단계(확정 등)
+  const kindOf = (label) => (label === '자동 저장' ? 'auto' : label === '수동 저장' ? 'manual' : 'step');
+  /** 기록 본문 압축(gzip, 지원하는 브라우저) → { size, fields } */
+  async function packText(text) {
+    if (typeof CompressionStream !== 'undefined' && typeof Response !== 'undefined') {
+      try {
+        const blob = await new Response(new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'))).blob();
+        return { size: blob.size, fields: { gz: true, blob } };
+      } catch (e) { /* 압축 실패 → 그대로 */ }
+    }
+    return { size: typeof Blob !== 'undefined' ? new Blob([text]).size : text.length, fields: { state: text } };
+  }
+  async function unpackRec(rec) {
+    if (rec.gz && rec.blob) return new Response(rec.blob.stream().pipeThrough(new DecompressionStream('gzip'))).text();
+    return rec.state;
+  }
+  const recMeta = (r) => ({ id: r.id, project: r.project, time: r.time, kind: r.kind || 'step', size: r.size || (r.state ? r.state.length : 0) });
+  /** 오래된 자동 저장 솎아 내기 + 모든 학년 합계 100MB 이하로 */
+  async function pruneDB(db) {
+    const all = await dbAll(db);
+    const del = C.pruneHistory(all.map(recMeta));
+    if (!del.length) return;
+    await new Promise((ok, fail) => { const tx = db.transaction(DB_STORE, 'readwrite'); const os = tx.objectStore(DB_STORE); del.forEach((id) => os.delete(id)); tx.oncomplete = ok; tx.onerror = () => fail(tx.error); });
+  }
+  async function autoBackup(label, kind) {
     if (fileStore) {
       try {
         const name = (index.list.find((p) => p.id === index.current) || {}).name || '';
@@ -170,14 +194,13 @@
       return;
     }
     try {
+      const text = JSON.stringify(state);
+      const packed = await packText(text);
+      const now = Date.now();
+      const rec = { id: `${index.current}:${now}`, project: index.current, name: (index.list.find((p) => p.id === index.current) || {}).name || '', time: now, label: label || '', kind: kind || kindOf(label), size: packed.size, ...packed.fields };
       const db = await openDB();
-      const all = await dbAll(db);
-      const mine = all.filter((b) => b.project === index.current).sort((a, b) => b.time - a.time);
-      const tx = db.transaction(DB_STORE, 'readwrite'), os = tx.objectStore(DB_STORE);
-      const rec = { id: `${index.current}:${Date.now()}`, project: index.current, name: (index.list.find((p) => p.id === index.current) || {}).name || '', time: Date.now(), label: label || '', state: JSON.stringify(state) };
-      os.put(rec);
-      mine.slice(4).forEach((b) => os.delete(b.id));
-      await new Promise((ok, fail) => { tx.oncomplete = ok; tx.onerror = () => fail(tx.error); });
+      await new Promise((ok, fail) => { const tx = db.transaction(DB_STORE, 'readwrite'); tx.objectStore(DB_STORE).put(rec); tx.oncomplete = ok; tx.onerror = () => fail(tx.error); });
+      await pruneDB(db);
       lastBackup = rec.time; listeners.forEach((f) => f());
     } catch (e) { /* IndexedDB 를 못 쓰는 환경이면 조용히 건너뜀 */ }
   }
@@ -200,10 +223,12 @@
     state = normalize(readJSON(pKey(index.current)));
   }
   let saveTimer = null;
+  let dirty = false, lastAutoAt = Date.now();
+  const AUTO_EVERY = 2 * 60000;
   function flush() { clearTimeout(saveTimer); writeJSON(pKey(index.current), state); writeJSON(INDEX_KEY, index); }
   function save() { clearTimeout(saveTimer); saveTimer = setTimeout(flush, 150); }
   function commit() {
-    rev++; cache.clear();
+    rev++; cache.clear(); dirty = true;
     // 작업 공간 목록에 불러온 파일명을 함께 기록 (학년 카드에 표시)
     const p = index.list.find((x) => x.id === index.current);
     if (p) p.fileName = state.rows.length ? state.fileName || '' : '';
@@ -242,7 +267,14 @@
           return all.filter((b) => b.name === name).map((b) => ({ id: b.file, time: b.time, label: b.label, name }));
         } catch (e) { return []; }
       }
-      try { const db = await openDB(); const all = await dbAll(db); return all.filter((b) => b.project === index.current).sort((a, b) => b.time - a.time).map(({ id, time, label, name }) => ({ id, time, label, name })); } catch (e) { return []; } },
+      try { const db = await openDB(); const all = await dbAll(db); return all.filter((b) => b.project === index.current).sort((a, b) => b.time - a.time).map((r) => ({ id: r.id, time: r.time, label: r.label, name: r.name, kind: r.kind || 'step', size: recMeta(r).size })); } catch (e) { return []; } },
+    /** 저장 기록 사용량 (모든 학년) → { count, bytes, max } */
+    async historyUsage() {
+      try { const db = await openDB(); const all = await dbAll(db); return { count: all.length, bytes: all.reduce((t, r) => t + recMeta(r).size, 0), max: C.HISTORY_MAX_BYTES }; } catch (e) { return { count: 0, bytes: 0, max: C.HISTORY_MAX_BYTES }; }
+    },
+    /** 자동 저장 켜기/끄기 (모든 학년 공통) */
+    autoSaveOn: () => index.autoSave !== false,
+    setAutoSave(on) { index.autoSave = !!on; writeJSON(INDEX_KEY, index); listeners.forEach((f) => f()); },
     async restoreBackup(id) {
       if (fileStore) {
         const r = await post('/api/backup-read', { file: id });
@@ -252,7 +284,11 @@
       }
       const db = await openDB(); const all = await dbAll(db); const b = all.find((x) => x.id === id);
       if (!b) return false;
-      state = normalize(JSON.parse(b.state)); undoStack = []; redoStack = []; commit();
+      const text = await unpackRec(b);
+      if (!text) return false;
+      // 되돌리기 전 지금 상태를 기록으로 남겨, 되돌린 것을 다시 무를 수 있게 한다
+      if (state.rows.length) await autoBackup('되돌리기 전 상태', 'step');
+      state = normalize(JSON.parse(text)); undoStack = []; redoStack = []; commit();
       return true;
     },
     commit,
@@ -857,6 +893,8 @@
     setTheme(v) { index.theme = v; writeJSON(INDEX_KEY, index); commit(); },
     setSubjectCode(s, v) { state.subjectCodes[s] = v; commit(); },
     resetAll() { state = blank(); commit(); },
+    /** 수동 저장: 지금 상태를 기록으로 남긴다 */
+    saveManual: () => autoBackup('수동 저장', 'manual'),
     /** 작업 공간 하나를 비운다 (목록·이름은 그대로). 열려 있는 작업이면 화면도 바로 비운다 */
     resetProject(id) {
       const p = index.list.find((x) => x.id === id); if (!p) return;
@@ -956,4 +994,15 @@
 
   load();
   window.Store = S;
+  // 자동 저장: 바뀐 내용이 있으면 2분마다 기록을 남긴다. 창을 숨기거나 닫을 때도 남긴다
+  function autoTick(force) {
+    if (!dirty || fileStore || !S.autoSaveOn() || !state.rows.length) return;
+    if (!force && Date.now() - lastAutoAt < AUTO_EVERY) return;
+    dirty = false; lastAutoAt = Date.now();
+    autoBackup('자동 저장', 'auto');
+  }
+  if (typeof document !== 'undefined' && typeof setInterval === 'function') {
+    setInterval(() => autoTick(false), 20000);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') autoTick(true); });
+  }
 })();

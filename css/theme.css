@@ -596,3 +596,23 @@ body[data-grade="3"] .page { --p-accent: #9b1c1c; }
 .rs-opt.empty b { color: #6b7280; }
 .rs-opt .muted { margin-left: auto; }
 .danger-hint { color: #b91c1c; }
+
+/* 저장: 자동 저장 · 수동 저장 · 저장 기록 */
+.side-foot .foot-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.side-foot .btn.file.auto-save { position: relative; }
+.side-foot .btn.file.auto-save .dot { width: 8px; height: 8px; border-radius: 50%; background: #16a34a; box-shadow: 0 0 0 3px #dcfce7; margin-left: 2px; }
+.side-foot .btn.file.auto-save.off .dot { background: #9ca3af; box-shadow: 0 0 0 3px #f3f4f6; }
+.side-foot .btn.file.auto-save.off { color: #9ca3af; }
+.h-usage { display: flex; align-items: center; gap: 10px; margin: 8px 0 12px; font-size: 12.5px; color: #475569; }
+.h-usage .bar { flex: 1; height: 8px; border-radius: 99px; background: #e5e7eb; overflow: hidden; }
+.h-usage .bar i { display: block; height: 100%; background: #16a34a; }
+.history-list { list-style: none; margin: 0; padding: 0; max-height: 46vh; overflow: auto; border: 1px solid #e5e7eb; border-radius: 10px; }
+.history-list .h-day { position: sticky; top: 0; background: #f1f5f9; padding: 6px 12px; font-weight: 800; font-size: 12.5px; color: #334155; }
+.history-list .h-row { display: grid; grid-template-columns: 84px 44px 1fr 60px auto; align-items: center; gap: 8px; padding: 6px 12px; border-top: 1px solid #f1f5f9; font-size: 13px; }
+.history-list .h-time { font-variant-numeric: tabular-nums; font-weight: 700; }
+.history-list .h-kind { text-align: center; border-radius: 6px; font-size: 11.5px; font-weight: 800; padding: 1px 0; }
+.history-list .k-auto { background: #ecfdf5; color: #047857; }
+.history-list .k-manual { background: #eff6ff; color: #1d4ed8; }
+.history-list .k-step { background: #fef3c7; color: #92400e; }
+.history-list .h-size { text-align: right; font-size: 11.5px; }
+.ok-text { color: #15803d; }

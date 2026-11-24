@@ -64,7 +64,8 @@
     document.getElementById('crumbs').innerHTML = `<span class="top-title" title="${h(ttl)}">${h(ttl)}</span><button class="btn text xs" data-act="proj-rename" title="이름 바꾸기">✎ 수정</button>`;
     document.getElementById('progress').innerHTML =
       `<button class="btn dark sm" data-act="backup" title="현재 학년 작업 전체를 JSON 파일로 내려받습니다 (오프라인 보관·다른 PC로 이동)">💾 작업 파일 다운로드</button>` +
-      `<button class="sync-chip ${lb ? 'on' : ''}" data-act="snapshot" data-tip="${lb ? '단계를 확정할 때마다 이 브라우저 안에 스냅샷이 남습니다. 눌러서 복구할 수 있습니다.' : '작업 내용은 이 브라우저에 자동 저장됩니다. 단계를 확정하면 스냅샷이 남습니다.'}"><i></i>${lb ? `자동 저장 ${fmtT(lb)}` : '브라우저 자동 저장'}</button>`;
+      `<button class="sync-chip ${S.autoSaveOn() && lb ? 'on' : ''}" data-act="snapshot" data-tip="${S.autoSaveOn() ? '바뀐 내용을 2분마다 기록으로 남깁니다. 눌러서 원하는 시점으로 되돌릴 수 있습니다.' : '자동 저장이 꺼져 있습니다. 사이드바 [자동 저장]에서 켤 수 있습니다.'}"><i></i>${!S.autoSaveOn() ? '자동 저장 꺼짐' : lb ? `자동 저장 ${fmtT(lb)}` : '자동 저장 켜짐'}</button>`;
+    const ab = document.getElementById('autosave-btn'); if (ab) { ab.classList.toggle('off', !S.autoSaveOn()); ab.title = S.autoSaveOn() ? '자동 저장 켜짐 · 2분마다 기록 (눌러서 끄기·사용량)' : '자동 저장 꺼짐 (눌러서 켜기)'; }
     const si = S.storageInfo(), note = document.querySelector('.side-note');
     if (note) note.innerHTML = si.mode === 'file' ? `자료는 이 컴퓨터의 <b>data 폴더</b>에 파일로 저장됩니다.<br><span class="muted" title="${h(si.dir)}">${h(si.dir)}</span>` : '데이터는 이 브라우저에만 저장되며 서버로 전송되지 않습니다.';
   }
@@ -107,6 +108,7 @@
   }
 
   // ---------------------------------------------------------------- 클릭
+  const fmtSize = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)}MB` : n >= 1024 ? `${Math.round(n / 1024)}KB` : `${n || 0}B`);
   /** 작업 공간 하나를 작업 파일(JSON)로 내려받는다 */
   function downloadProject(p) {
     const json = S.projectJSON(p.id);
@@ -119,29 +121,59 @@
     go(el) { go(el.dataset.view); },
     'toggle-nav'() { document.body.classList.toggle('nav-open'); },
     'go-out'(el) { V.setOutputsTab && V.setOutputsTab(el.dataset.tab); go('outputs'); },
+    /** 저장 기록: 자동·수동·단계 기록 목록에서 원하는 시점으로 되돌리기 */
     async snapshot() {
-      const backups = await S.backups();
-      const fmt = (t) => new Date(t).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const [list, use] = await Promise.all([S.backups(), S.historyUsage()]);
+      const day = (t) => new Date(t).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
+      const time = (t) => new Date(t).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const KIND = { auto: ['자동', 'k-auto'], manual: ['수동', 'k-manual'], step: ['단계', 'k-step'] };
+      let lastDay = '';
+      const rows = list.map((b) => {
+        const d = day(b.time), head = d !== lastDay ? `<li class="h-day">${h(d)}</li>` : ''; lastDay = d;
+        const [kl, kc] = KIND[b.kind] || KIND.step;
+        return `${head}<li class="h-row"><span class="h-time">${time(b.time)}</span><span class="h-kind ${kc}">${kl}</span><span class="h-label">${h(b.label === '자동 저장' ? '' : b.label)}</span><span class="h-size muted">${fmtSize(b.size)}</span><button class="btn outline xs" data-restore="${h(b.id)}">이 시점으로 되돌리기</button></li>`;
+      }).join('');
+      const pct = Math.min(100, Math.round((use.bytes / use.max) * 100));
       const v = await U.modal({
-        title: '자동 저장 & 스냅샷',
-        body: `<p class="hint">작업 내용은 이 브라우저에 즉시 자동 저장됩니다. 단계를 확정할 때마다 스냅샷이 남고(최근 5개), 아래에서 그 시점으로 되돌릴 수 있습니다.</p>
-          ${backups.length ? `<ul class="backup-list">${backups.map((b) => `<li><span>${fmt(b.time)}</span> <span class="muted">${h(b.label)}</span> <button class="btn outline xs" data-restore="${h(b.id)}">이 시점으로 복구</button></li>`).join('')}</ul>` : '<p class="muted">아직 스냅샷이 없습니다. 단계를 확정하면 자동으로 남습니다.</p>'}
-          <p class="hint">다른 컴퓨터로 옮기거나 오래 보관하려면 <b>파일 저장</b>으로 JSON 작업 파일을 내려받으세요. 브라우저 자료를 지우면 스냅샷도 함께 사라집니다.</p>`,
-        buttons: [{ label: '닫기', value: null }, { label: '파일 저장', value: 'file' }, { label: '지금 스냅샷 남기기', value: 'snap', cls: 'primary' }],
+        title: `저장 기록 · ${h(S.currentProject().name)}`, wide: true,
+        body: `<p class="hint">자동 저장은 바뀐 내용이 있으면 <b>2분마다</b>, 단계를 확정할 때마다 기록을 남깁니다. 원하는 시점의 <b>이 시점으로 되돌리기</b>를 누르세요. 되돌리기 직전 상태도 기록으로 남아 다시 무를 수 있습니다.</p>
+          <div class="h-usage"><div class="bar"><i style="width:${pct}%"></i></div><span>모든 학년 기록 ${use.count}개 · ${fmtSize(use.bytes)} / ${fmtSize(use.max)}</span></div>
+          ${list.length ? `<ul class="history-list">${rows}</ul>` : '<p class="muted">아직 기록이 없습니다. 작업을 하면 2분마다 자동으로 남습니다.</p>'}
+          <p class="hint">기록이 너무 많아지지 않게 오래된 자동 저장은 솎아 냅니다: 1시간 이내는 모두, 하루 이내는 10분에 하나, 일주일 이내는 1시간에 하나, 그 이전은 하루에 하나. 모든 학년 합계가 100MB를 넘으면 오래된 기록부터 지웁니다. 기록은 이 컴퓨터(브라우저)에만 있으니 오래 보관하거나 다른 PC로 옮길 때는 <b>수동 저장</b>으로 파일을 받아 두세요.</p>`,
+        buttons: [{ label: '닫기', value: null }, { label: '지금 수동 저장', value: 'manual', cls: 'primary' }],
         onMount(m, close) {
           m.addEventListener('click', async (e) => {
             const b = e.target.closest('[data-restore]'); if (!b) return;
             close(null);
-            if (!(await U.confirm('이 시점의 스냅샷으로 되돌릴까요?\n\n※ 지금 상태는 사라집니다. 필요하면 먼저 [파일 저장]을 하세요.', '스냅샷 복구', '복구'))) return;
-            if (await S.restoreBackup(b.dataset.restore)) { go('roster'); U.toast('스냅샷에서 복구하였습니다.', 'ok'); } else U.alert('그 스냅샷을 읽지 못했습니다.');
+            if (!(await U.confirm('이 시점으로 되돌릴까요?\n\n지금 상태는 「되돌리기 전 상태」 기록으로 남으니, 필요하면 그 기록으로 다시 되돌릴 수 있습니다.', '저장 기록 되돌리기', '되돌리기'))) return;
+            if (await S.restoreBackup(b.dataset.restore)) { go('roster'); U.toast('그 시점으로 되돌렸습니다.', 'ok'); } else U.alert('그 기록을 읽지 못했습니다.');
           });
         },
       });
-      if (v === 'file') globalActions.backup();
-      if (v === 'snap') {
-        if (!S.state.rows.length) return U.toast('저장할 데이터가 없습니다.', 'error');
-        await S.autoBackup('수동 스냅샷'); U.toast('스냅샷을 남겼습니다.', 'ok');
-      }
+      if (v === 'manual') globalActions['save-manual']();
+    },
+    /** 자동 저장: 켜기·끄기와 사용량 */
+    async autosave() {
+      const use = await S.historyUsage();
+      const on = S.autoSaveOn();
+      const lb = S.lastBackup();
+      const v = await U.modal({
+        title: '자동 저장',
+        body: `<p>자동 저장이 <b class="${on ? 'ok-text' : 'danger-text'}">${on ? '켜져 있습니다' : '꺼져 있습니다'}</b>.${lb ? ` 마지막 기록: <b>${new Date(lb).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</b>` : ''}</p>
+          <ul class="hint-list"><li>작업 내용은 바뀔 때마다 이 컴퓨터에 바로 저장됩니다. (끄더라도 지금 작업은 사라지지 않습니다)</li>
+          <li>자동 저장을 켜 두면 그와 별도로 <b>2분마다</b>, 그리고 단계를 확정할 때마다 그 시점의 기록을 남겨 <b>저장 기록</b>에서 되돌릴 수 있습니다.</li>
+          <li>기록은 압축해 보관하고, 모든 학년 합계 <b>100MB</b>를 넘지 않게 오래된 것부터 정리합니다. 지금 ${use.count}개 · ${fmtSize(use.bytes)} 사용 중입니다.</li></ul>`,
+        buttons: [{ label: '닫기', value: null }, { label: '저장 기록 보기', value: 'list' }, { label: on ? '자동 저장 끄기' : '자동 저장 켜기', value: 'toggle', cls: on ? 'danger-text ghost' : 'primary' }],
+      });
+      if (v === 'toggle') { S.setAutoSave(!on); U.toast(`자동 저장을 ${on ? '껐습니다' : '켰습니다'}.`, 'ok'); }
+      if (v === 'list') globalActions.snapshot();
+    },
+    /** 수동 저장: 기록으로 남기고 작업 파일도 내려받는다 */
+    async 'save-manual'() {
+      if (!S.state.rows.length) return U.toast('저장할 데이터가 없습니다.', 'error');
+      await S.saveManual();
+      globalActions.backup();
+      U.toast('수동 저장했습니다. 저장 기록에 남기고 작업 파일도 내려받았습니다.', 'ok');
     },
     async settings() {
       const o = S.state.out;
@@ -162,10 +194,8 @@
             <label>학생별 시간표${opt('slipSeat', out.slipSeat ? '1' : '0', [['1', '좌석번호 표시', ''], ['0', '좌석번호 숨김', '']])}</label>
             <label>하단 유의사항${opt('slipNoteOn', out.slipNoteOn ? '1' : '0', [['1', '인쇄', ''], ['0', '인쇄 안 함', '']])}</label>
           </div>
-          <h4>자동 백업 <span class="muted sm">(단계를 확정할 때마다 이 브라우저 안에 보관, 최근 5개)</span></h4>
-          ${backups.length ? `<ul class="backup-list">${backups.map((b) => `<li><span>${fmt(b.time)}</span> <span class="muted">${h(b.label)}</span> <button class="btn outline xs" data-restore="${h(b.id)}">이 시점으로 복구</button></li>`).join('')}</ul>` : '<p class="muted">아직 자동 백업이 없습니다.</p>'}
-          <p class="hint">브라우저 자료를 지우면 자동 백업도 함께 사라집니다. 파일로 보관하려면 사이드바의 <b>백업 저장</b>을 쓰세요.</p>`,
-        buttons: [{ label: '닫기', value: null }, { label: '저장', value: 'ok', cls: 'primary' }],
+          <h4>저장 기록 <span class="muted sm">(자동·수동 저장, 되돌리기)</span></h4>
+          <p class="hint">사이드바의 <b>저장 기록</b>에서 원하는 시점으로 되돌릴 수 있습니다.</p>`,        buttons: [{ label: '닫기', value: null }, { label: '저장', value: 'ok', cls: 'primary' }],
         onMount(m, close) {
           m.addEventListener('change', (e) => {
             const r = e.target; if (!r.name) return;

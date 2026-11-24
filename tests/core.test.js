@@ -298,4 +298,29 @@ t('띄워진 공간 묶음: 시험실을 인원에 맞는 가장 작은 묶음 �
   assert.deepStrictEqual(place([25, 25], 100, []).slice(0, 3), ['exam', 'exam', 'void']);
 });
 
+t('저장 기록 정리: 자동 저장 솎아 내기와 100MB 제한', () => {
+  const MIN = 60000, HOUR = 60 * MIN, DAY = 24 * HOUR, now = 100 * DAY;
+  const recs = [];
+  // 2분마다 자동 저장 3일치 (2,160개)
+  for (let t2 = now - 3 * DAY; t2 <= now; t2 += 2 * MIN) recs.push({ id: 'a' + t2, project: 'p', time: t2, kind: 'auto', size: 1000 });
+  recs.push({ id: 'm1', project: 'p', time: now - 2 * DAY, kind: 'manual', size: 1000 });
+  recs.push({ id: 's1', project: 'p', time: now - 2 * DAY + MIN, kind: 'step', size: 1000 });
+  const del = new Set(C.pruneHistory(recs, now));
+  const kept = recs.filter((r) => !del.has(r.id));
+  assert.ok(kept.some((r) => r.id === 'm1') && kept.some((r) => r.id === 's1'), '수동·단계 기록은 솎아 내지 않음');
+  assert.ok(kept.filter((r) => now - r.time <= HOUR).length >= 30, '1시간 이내 자동 저장은 모두 남김');
+  const dayOld = kept.filter((r) => r.kind === 'auto' && now - r.time > HOUR && now - r.time <= DAY);
+  assert.ok(dayOld.length <= 23 * 6 + 1, '하루 이내는 10분에 하나');
+  assert.ok(kept.length < 300, '3일치 2분 간격 자동 저장이 300개 미만으로 줄어듦 (' + kept.length + ')');
+  // 용량 제한: 합계가 넘으면 자동 → 단계 → 수동 순서로 오래된 것부터 지우고, 최근 기록 하나는 남김
+  const big = [
+    { id: 'x1', project: 'p', time: 1, kind: 'manual', size: 60 },
+    { id: 'x2', project: 'p', time: 2, kind: 'auto', size: 60 },
+    { id: 'x3', project: 'p', time: 3, kind: 'step', size: 60 },
+    { id: 'x4', project: 'p', time: 4, kind: 'auto', size: 60 },
+  ];
+  assert.deepStrictEqual(C.pruneHistory(big, 5, 130).sort(), ['x2', 'x3']);
+  assert.deepStrictEqual(C.pruneHistory([{ id: 'only', project: 'p', time: 1, kind: 'auto', size: 999 }], 2, 10), []);
+});
+
 console.log(`\n${pass}개 테스트 통과`);

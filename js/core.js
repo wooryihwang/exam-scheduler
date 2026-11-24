@@ -678,6 +678,38 @@
     const lo = Math.min(a, b), hi = Math.max(a, b);
     return gaps.some((g) => g >= lo && g < hi);
   }
+  /**
+   * 저장 기록 정리: 지울 기록 id 목록을 돌려준다.
+   * recs: [{ id, project, time, kind: 'auto'(자동 저장) | 'step'(단계 확정 등) | 'manual'(수동 저장), size(바이트) }]
+   * ① 자동 저장 솎아 내기(작업 공간마다): 1시간 이내는 모두, 하루 이내는 10분에 하나, 7일 이내는 1시간에 하나, 그 이전은 하루에 하나(각 구간의 가장 최근 것)
+   * ② 합계가 maxBytes 를 넘으면 자동 → 단계 → 수동 순서, 같은 종류는 오래된 것부터 지운다. 작업 공간마다 가장 최근 기록 하나는 남긴다.
+   */
+  const HISTORY_MAX_BYTES = 100 * 1024 * 1024;
+  function pruneHistory(recs, now = Date.now(), maxBytes = HISTORY_MAX_BYTES) {
+    const MIN = 60000, HOUR = 60 * MIN, DAY = 24 * HOUR;
+    const del = new Set();
+    const byProj = new Map();
+    for (const r of recs) { if (!byProj.has(r.project)) byProj.set(r.project, []); byProj.get(r.project).push(r); }
+    const newest = new Set();
+    for (const list of byProj.values()) {
+      list.sort((a, b) => b.time - a.time);
+      newest.add(list[0].id);
+      const seen = new Set();
+      for (const r of list) {
+        if (r.kind !== 'auto') continue;
+        const age = now - r.time;
+        if (age <= HOUR) continue;
+        const key = age <= DAY ? 'm' + Math.floor(r.time / (10 * MIN)) : age <= 7 * DAY ? 'h' + Math.floor(r.time / HOUR) : 'd' + Math.floor(r.time / DAY);
+        if (seen.has(key) && !newest.has(r.id)) del.add(r.id); else seen.add(key);
+      }
+    }
+    let total = recs.reduce((t, r) => t + (del.has(r.id) ? 0 : r.size || 0), 0);
+    const rank = { auto: 0, step: 1, manual: 2 };
+    const order = recs.filter((r) => !del.has(r.id) && !newest.has(r.id)).sort((a, b) => (rank[a.kind] ?? 0) - (rank[b.kind] ?? 0) || a.time - b.time);
+    for (const r of order) { if (total <= maxBytes) break; del.add(r.id); total -= r.size || 0; }
+    return [...del];
+  }
+
   /** 교실 번호 목록을 띄워진 공간 기준으로 묶음(연속한 교실)으로 나눈다 */
   function roomSegments(idx, gaps) {
     const segs = [];
@@ -1279,7 +1311,7 @@
     buildStudents, subjectStudentSets, canSameTime, findSameTimeCombos,
     ttCell, remainingSubjects, duplicateSubjects, candidateSubjects, dayDistribution, cellStatus, validateTimetable, autoTimetable,
     subjectBanMap, examSlots, studySlots, placeSlots, slotInfo, parseCell, waitCell, homeCell, homeSize, moreCell, VOID_CELL, slotPlacementStatus, slotRoster, studentIndex, unplacedHomes, balanceMoves, placementIssues, unplacedBans, classNoOfRoom,
-    autoPlaceSlot, fitWaits, roomsApart, roomSegments, canUseExtra, buildSeating,
+    autoPlaceSlot, fitWaits, roomsApart, roomSegments, pruneHistory, HISTORY_MAX_BYTES, canUseExtra, buildSeating,
     assignSeatsInOrder, assignSeatsRandom, validateSeating, seatGrid,
     isProgramWorkbook, readProgram, stateFromProgram, seatKey, toISODate,
     holidayReason, nextSchoolDays, hasHolidayTable,
