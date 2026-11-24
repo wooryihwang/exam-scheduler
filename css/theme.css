@@ -703,3 +703,16 @@ body[data-grade="3"] .page { --p-accent: #9b1c1c; }
 .sp-where { font-size: 13px; }
 .sp-place .sp-ext { font-size: 12.5px; color: #475569; white-space: nowrap; }
 .sp-place .sp-ext .input { width: 56px; margin: 0 3px; }
+
+/* 8단계: 요약 줄 · 자세히 보기 */
+.sp-sum { font-size: 13px; line-height: 1.6; }
+.sp-sum .sp-roomname { color: #9b1c1c; font-weight: 900; }
+.sp-sum .sub { color: #64748b; }
+.sp-sum b { color: #1f2937; }
+.sp-sum .sp-extra-tag { margin-left: 6px; padding: 0 6px; border-radius: 6px; background: #fef3c7; color: #92400e; font-size: 11.5px; font-weight: 800; }
+.btn.sp-detail-btn { padding: 2px 8px; border: 1px solid #b91c1c; color: #9b1c1c; background: #fff; border-radius: 7px; font-weight: 800; }
+.btn.sp-detail-btn:hover { background: #fff1f1; }
+.sp-detail-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 10px; }
+.sp-detail-top .input { width: 64px; margin: 0 4px; }
+.sp-detail-preview { max-height: 62vh; overflow: auto; background: #e7e9ee; border-radius: 10px; padding: 12px; }
+.sp-detail-preview .page { zoom: .62; margin: 0 auto; }

@@ -13,6 +13,18 @@
   const slotShort = (key) => { const [d, p] = C.parseSlotKey(key); return `${d}-${p}교시`; };
   const infoOf = (k) => ROOM_INFO[k] || { title: `별도 ${k}실`, who: '추가 별도실', desc: '필요에 따라 추가한 별도 시험실' };
 
+  /** 별도실에서 보는 교시와 원래 고사실(답안지를 돌려보낼 곳) — 배치를 확정한 뒤에 알 수 있음 */
+  const plan = (key) => S.finalSeating().filter((r) => r.special && C.studentKey(r.ban, r.num) === key).map((r) => ({ title: slotTitle(r.slot), room: r.origRoom }));
+  const slotTitle = (key) => { const sl = S.slots().find((y) => y.key === key); return sl ? sl.title : key; };
+  /** 한 줄 요약: '별도 1실 에서 응시 · 답안지는 3-1, 3-4 으로 (6교시)' + [자세히 보기] (examtable과 같은 문구) */
+  function summary(x, sp, mode) {
+    const p = plan(x.key);
+    if (!p.length) return `<span class="sp-sum muted">${mode === 'pick' ? '교시를 골라 주세요.' : '배치가 아직 없습니다.'}</span>`;
+    const rooms = [...new Set(p.map((y) => y.room).filter(Boolean))];
+    const short = rooms.length <= 3 ? rooms.join(', ') : `${rooms.slice(0, 3).join(', ')} 외 ${rooms.length - 3}실`;
+    return `<span class="sp-sum"><b class="sp-roomname">별도 ${sp.room}실</b><span class="muted"> 에서 응시 </span><span class="sub">· 답안지는 </span><b>${h(short)}</b><span class="sub"> 으로</span>${p.length > 1 ? `<span class="muted"> (${p.length}교시)</span>` : ''}${sp.extra ? `<span class="sp-extra-tag">+${sp.extra}분</span>` : ''}</span><button class="btn xs sp-detail-btn" data-act="sp-detail" data-key="${h(x.key)}" title="${h(p.map((y) => `${y.title} → ${y.room}`).join('\n'))}">자세히 보기</button>`;
+  }
+
   /** 한 학생 줄: 별도 응시(해당없음·모든 시험·교시 지정) · 별도실 · 교시 지정/응시 장소 */
   function row(x, ks) {
     const sp = st().special.students[x.key];
@@ -20,9 +32,7 @@
     const seg = [['none', '해당없음'], ['all', '모든 시험'], ['pick', '교시 지정']].map(([m, l]) => `<button class="sp-seg-btn ${mode === m ? 'on' : ''}" data-act="sp-mode-set" data-key="${h(x.key)}" data-mode="${m}">${l}</button>`).join('');
     const roomSel = mode === 'none' ? '<span class="muted">—</span>' : `<select class="input sm sp-room-sel" data-change="sp-move" data-key="${h(x.key)}">${ks.map((k) => `<option value="${k}" ${sp.room === k ? 'selected' : ''}>${k}실</option>`).join('')}</select>`;
     let where = '';
-    if (mode === 'all') {
-      where = `<span class="sp-where">모든 시험을 <b>${h(S.specialRoom(sp.room).name)}</b>에서</span>`;
-    } else if (mode === 'pick') {
+    if (mode === 'pick') {
       const exams = S.specialExamSlots(x.key);
       const mine = new Set(exams.map((e) => e.slot));
       const all = S.slots().filter((sl) => sl.subjects.length);
@@ -31,10 +41,10 @@
         const subj = (exams.find((e) => e.slot === sl.key) || {}).subject;
         return `<button class="sp-chip ${on ? 'on' : ''}" ${has ? `data-act="sp-chip" data-key="${h(x.key)}" data-slot="${sl.key}"` : 'disabled'} title="${has ? h(`${sl.title} ${C.onlySubject(subj)}`) : '이 교시에는 시험이 없습니다'}">${slotShort(sl.key)}</button>`;
       }).join('') : '<span class="muted sm">시간표를 만든 뒤 교시를 고를 수 있습니다.</span>';
-      const n = Object.keys(sp.slots).filter((k) => mine.has(k)).length;
-      where = `<div class="sp-chips">${chips}</div>${all.length ? (n ? `<span class="muted sm">${n}개 교시를 ${h(S.specialRoom(sp.room).name)}에서</span>` : '<span class="sp-need">교시를 골라 주세요.</span>') : ''}`;
+      where = `<div class="sp-chips">${chips}</div>`;
     }
-    const ext = mode === 'none' ? '' : `<label class="sp-ext">추가 시간 <input type="number" min="0" max="180" class="input xs num" data-change="sp-extra" data-key="${h(x.key)}" value="${sp.extra}">분</label>`;
+    if (mode !== 'none') where += summary(x, sp, mode);
+    const ext = '';
     return `<tr class="${mode === 'none' ? '' : 'on'}" data-q="${h(`${x.ban} ${x.num}번 ${x.name}`)}">
       <td class="sp-who"><b class="ban">${h(x.ban)}</b> ${x.num}번 ${h(x.name)}</td>
       <td><span class="sp-seg">${seg}</span></td>
@@ -87,6 +97,17 @@
       'sp-chip'(el) {
         const x = st().special.students[el.dataset.key]; if (!x) return;
         S.setSpecialSlot(el.dataset.key, el.dataset.slot, el.dataset.slot in x.slots ? null : x.extra);
+      },
+      /** 자세히 보기: 추가 시간 + 그 학생의 별도 고사실 안내(10-8과 같은 내용) */
+      'sp-detail'(el) {
+        const key = el.dataset.key, x = S.students().find((y) => y.key === key), sp = st().special.students[key];
+        if (!x || !sp) return;
+        U.modal({
+          title: `${h(x.ban)} ${x.num}번 ${h(x.name)} · 별도 고사실`, wide: true,
+          body: `<div class="sp-detail-top"><label class="sp-ext">추가 시간 <input type="number" min="0" max="180" class="input xs num" data-change="sp-extra" data-key="${h(key)}" value="${sp.extra}">분</label><span class="muted sm">시험 시간이 늘어나는 학생만 적습니다. 바꾸면 바로 저장되고, 아래 안내에는 창을 다시 열면 반영됩니다.</span></div>
+            <div class="sp-detail-preview">${Views.spGuideFor ? Views.spGuideFor(key) : ''}</div>`,
+          buttons: [{ label: '닫기', value: null }],
+        });
       },
       'sp-set'(el) {
         const room = +el.dataset.room, key = el.dataset.key;

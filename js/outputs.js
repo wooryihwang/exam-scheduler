@@ -302,6 +302,8 @@
         <p class="p-note">고사실 뒤에 <b class="amber">(별)</b>이 붙은 교시는 별도 고사실에서 봅니다.</p></div></div>`;
   }
   const pagesSpGuide = (list) => list.map(spGuide).join('');
+  /** 8단계 [자세히 보기]: 한 학생의 별도 고사실 안내 쪽 */
+  Views.spGuideFor = (key) => { const x = spStudents().find((y) => y.key === key); return x ? spGuide(x) : ''; };
 
   // ---------------------------------------------------------------- 10-9 위탁학생
   const fmtAt = (t) => new Date(t).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
