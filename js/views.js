@@ -563,6 +563,36 @@
     return list.slice().sort((a, b) => by[k](a, b) || b.subjects.length - a.subjects.length);
   };
   // ================================================================ 4. 평가과목
+  // 평가과목 표: 정렬(기본 학생수 많은 순), 머리글 전체 체크, 일괄 선택 도구줄
+  const evalSort = () => ui.evalSort || { k: 'stu', dir: -1 };
+  const sortedSubjects = (list) => {
+    const { k, dir } = evalSort();
+    const val = (x) => (k === 'name' ? x.name : k === 'ban' ? x.banCount : x.stuCount);
+    return list.slice().sort((a, b) => {
+      const d = k === 'name' ? a.name.localeCompare(b.name, 'ko') : val(a) - val(b);
+      return d * dir || b.stuCount - a.stuCount || a.name.localeCompare(b.name, 'ko');
+    });
+  };
+  const triBox = (n, total, locked) => {
+    const st8 = n === 0 ? 'none' : n === total ? 'all' : 'some';
+    return `<span class="chk tri ${st8} ${locked ? 'off' : ''}" ${locked ? '' : 'data-act="eval-head"'} role="checkbox" aria-checked="${st8 === 'all' ? 'true' : st8 === 'some' ? 'mixed' : 'false'}" title="${st8 === 'all' ? '모두 해제' : '모두 선택'}"></span>`;
+  };
+  const evalTools = (s, locked) => {
+    const saved = S.evalSavedList().length;
+    const dis = locked ? 'disabled' : '';
+    const b = (act, icon, label, title, cls = '') => `<button class="btn xs eval-btn ${cls}" data-act="${act}" title="${title}" ${dis}><span class="ico">${icon}</span>${label}</button>`;
+    return `<div class="eval-tools">
+      ${b('eval-all', '✓', '전체', '모든 과목을 체크합니다')}
+      ${b('eval-none', '☐', '해제', '모든 체크를 풉니다')}
+      ${b('eval-invert', '⟳', '반전', '체크한 과목과 안 한 과목을 서로 바꿉니다')}
+      ${b('eval-ban3', '≡', '3반↑', '3개 반 이상 개설된 과목을 모두 체크합니다 (이미 체크한 과목은 그대로)')}
+      <span class="eval-sep"></span>
+      ${b('eval-save', '💾', '체크 저장', '지금 체크한 과목을 저장해 둡니다', 'accent')}
+      <button class="btn xs eval-btn accent" data-act="eval-restore" title="저장해 둔 체크(없으면 마지막으로 확정한 평가과목)로 되돌립니다" ${locked || !saved ? 'disabled' : ''}><span class="ico">↺</span>기존 체크 (${saved})</button>
+      ${locked ? '<span class="eval-lock-note">확정을 취소하면 바꿀 수 있습니다</span>' : ''}
+    </div>`;
+  };
+
   const evalv = {
     id: 'eval', no: 4, title: '평가과목',
     status: () => st().confirmed.subjects,
@@ -576,20 +606,21 @@
         confirmBtn(locked, '평가과목 확정 취소', `평가과목 확정 (${n}과목)`, locked ? 'eval-unconfirm' : 'eval-confirm')) +
         banner(locked ? 'ok' : 'info', locked ? '평가과목을 확정하였습니다. 동시 시험 가능 과목을 확인하고 <b>5. 학생별 평가과목</b> 또는 <b>6. 고사시간표</b>로 이동하세요.' : '평가 대상 과목을 체크한 뒤 확정하세요. <span class="muted">(주의) 모든 반이 응시하는 과목이 하나 이상 포함되어야 합니다. 예) 한국사</span>') +
         `<div class="grid-2 top">
-          <div class="card">
-            <div class="card-head"><h3>평가 대상 과목 선택 <span class="muted">${n}/${s.subjects.length}</span></h3>
-              ${locked ? '' : '<span><button class="btn ghost xs" data-act="eval-all">전체 선택</button><button class="btn ghost xs" data-act="eval-none">전체 해제</button><button class="btn ghost xs" data-act="eval-invert" title="체크한 과목과 안 한 과목을 서로 바꿉니다">반전</button><button class="btn ghost xs" data-act="eval-ban3" title="3개 반 이상 개설된 과목을 모두 체크합니다 (이미 체크한 과목은 그대로)">3반↑ 체크</button></span>'}</div>
-            <table class="tbl compact selectable"><thead><tr><th style="width:44px">평가</th><th>과목</th><th>반수</th><th>학생수</th></tr></thead>
-            <tbody>${s.subjects.map((x) => `
-              <tr class="${x.evaluate ? 'on' : ''}">
-                <td><input type="checkbox" data-change="eval" data-name="${h(x.name)}" ${x.evaluate ? 'checked' : ''} ${locked ? 'disabled' : ''}></td>
-                <td>${h(x.name)}</td><td>${x.banCount}</td><td>${x.stuCount}</td>
+          <div class="card eval-card">
+            <div class="card-head"><h3>평가 대상 과목 선택 <span class="sel-badge">${n}/${s.subjects.length}개 선택됨</span>${locked ? ` <span class="muted sm">응시 ${ev.reduce((t, x) => t + x.stuCount, 0).toLocaleString()}건</span>` : ''}</h3></div>
+            ${evalTools(s, locked)}
+            <table class="tbl compact selectable eval-tbl"><thead><tr>
+              <th class="eval-chk">${triBox(n, s.subjects.length, locked)}</th>
+              ${[['name', '과목명'], ['ban', '반수'], ['stu', '학생수']].map(([k, l]) => `<th class="sortable ${k === 'name' ? '' : 'num'} ${evalSort().k === k ? 'sorted' : ''}" data-act="eval-sort" data-k="${k}" title="눌러서 정렬">${l}${evalSort().k === k ? `<span class="sort-arrow">${evalSort().dir < 0 ? '↓' : '↑'}</span>` : ''}</th>`).join('')}
+            </tr></thead>
+            <tbody>${sortedSubjects(s.subjects).map((x) => `
+              <tr class="${x.evaluate ? 'on' : ''} ${locked ? 'locked' : ''}" ${locked ? '' : `data-act="eval-row" data-name="${h(x.name)}"`}>
+                <td class="eval-chk"><span class="chk ${x.evaluate ? 'on' : ''}" role="checkbox" aria-checked="${x.evaluate}"></span></td>
+                <td>${h(x.name)}</td><td class="num ban">${x.banCount}</td><td class="num">${x.stuCount}</td>
               </tr>`).join('')}</tbody></table>
           </div>
           <div class="card">
-            <h3>평가 과목 ${locked ? `<span class="muted">(${ev.length}과목, ${ev.reduce((t, x) => t + x.stuCount, 0)}건)</span>` : ''}</h3>
-            ${locked ? `<table class="tbl compact"><thead><tr><th>과목</th><th>반수</th><th>학생수</th></tr></thead><tbody>${ev.map((x) => `<tr><td>${h(x.name)}</td><td>${x.banCount}</td><td>${x.stuCount}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">확정하면 표시됩니다.</p>'}
-            <h3 class="mt">동시 시험 가능 과목</h3>
+            <h3>동시 시험 가능 과목</h3>
             ${!locked ? '<p class="muted">확정하면 표시됩니다.</p>' : s.combos.length === 0 ? '<p class="muted">동시 시험 가능 과목이 없습니다. (모든 과목을 따로 편성해야 합니다)</p>' : `
               ${s.combosOverflow ? banner('warn', '조합이 너무 많아 1,000개까지만 표시합니다.') : ''}
               <div class="combo-tools">${[['all', `전체 (${s.combos.length})`], ...[4, 3, 2].map((k) => [String(k), `${k}과목 (${s.combos.filter((c) => c.subjects.length === k).length})`])].map(([k, l]) => `<button class="btn xs ${(ui.comboN || 'all') === k ? 'primary' : 'ghost'}" data-act="combo-n" data-n="${k}">${l}</button>`).join('')}
@@ -600,6 +631,15 @@
         </div>`;
     },
     actions: {
+      'eval-row'(el) { S.toggleEval(el.dataset.name); },
+      'eval-head'() { const s = st(); S.setAllEval(!s.subjects.every((x) => x.evaluate)); },
+      'eval-sort'(el) {
+        const k = el.dataset.k, cur = evalSort();
+        ui.evalSort = cur.k === k ? { k, dir: -cur.dir } : { k, dir: k === 'name' ? 1 : -1 };
+        rerender();
+      },
+      'eval-save'() { const n = S.saveEvalChecks(); U.toast(`체크한 ${n}과목을 저장했습니다. [기존 체크]로 언제든 되살릴 수 있습니다.`, 'ok'); },
+      'eval-restore'() { S.restoreEvalChecks(); U.toast(`저장해 둔 체크(${S.evalSavedList().length}과목)로 되돌렸습니다.`, 'ok'); },
       'eval-all'() { S.setAllEval(true); },
       'eval-invert'() { S.evalBulk('invert'); },
       'eval-ban3'() { S.evalBulk('ban3'); },

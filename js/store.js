@@ -23,6 +23,7 @@
     dates: ['', '', '', '', ''],
     times: {},
     evalSubjects: [],
+    evalSaved: null,      // 평가과목 '체크 저장'으로 남겨 둔 과목 이름 목록 ('기존 체크'로 되살림)
     combos: [],
     combosOverflow: false,
     timetable: {},
@@ -568,6 +569,15 @@
     evalBulk(kind) {
       if (kind === 'invert') state.subjects.forEach((s) => { s.evaluate = !s.evaluate; });
       if (kind === 'ban3') state.subjects.forEach((s) => { if (s.banCount >= 3) s.evaluate = true; });
+      commit();
+    },
+    /** 지금 체크한 과목을 '기존 체크'로 저장 */
+    saveEvalChecks() { state.evalSaved = state.subjects.filter((s) => s.evaluate).map((s) => s.name); commit(); return state.evalSaved.length; },
+    /** '기존 체크' 목록: 저장한 체크가 없으면 마지막으로 확정한 평가과목 */
+    evalSavedList() { return Array.isArray(state.evalSaved) ? state.evalSaved : state.evalSubjects; },
+    restoreEvalChecks() {
+      const names = new Set(S.evalSavedList());
+      state.subjects.forEach((s) => { s.evaluate = names.has(s.name); });
       commit();
     },
     confirmSubjects() {

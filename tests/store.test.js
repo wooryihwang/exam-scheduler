@@ -64,6 +64,12 @@ t('평가과목 일괄 선택: 3반 이상 체크 · 반전', () => {
   const n = S.state.subjects.filter((s) => s.evaluate).length;
   S.evalBulk('invert');
   assert.strictEqual(S.state.subjects.filter((s) => s.evaluate).length, S.state.subjects.length - n);
+  // 체크 저장 → 모두 해제 → 기존 체크로 되살림
+  const saved = S.saveEvalChecks();
+  assert.strictEqual(saved, S.state.subjects.length - n);
+  S.setAllEval(false);
+  S.restoreEvalChecks();
+  assert.strictEqual(S.state.subjects.filter((s) => s.evaluate).length, saved);
   S.setAllEval(true);
   S.confirmSubjects();
   assert.ok(S.state.confirmed.subjects);

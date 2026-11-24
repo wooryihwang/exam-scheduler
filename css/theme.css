@@ -524,3 +524,32 @@ body[data-grade="3"] .page { --p-accent: #9b1c1c; }
 .label-layout .label-preview { display: flex; justify-content: center; min-width: 0; overflow: hidden; }
 .label-layout .label-preview .page { flex: none; margin: 0; }
 @media (max-width: 900px) { .preview > .label-layout { grid-template-columns: 1fr; } }
+
+/* 4. 평가과목: examtable 형태의 일괄 선택 도구줄 · 체크 칸 · 정렬 머리글 */
+.eval-card .card-head { margin-bottom: 10px; }
+.sel-badge { display: inline-block; margin-left: 8px; padding: 3px 10px; border-radius: 999px; background: #fdecec; color: #b91c1c; font-size: 12.5px; font-weight: 800; vertical-align: 2px; }
+.eval-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 12px; }
+.eval-tools .eval-btn { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; color: #1f2937; font-weight: 700; font-size: 12.5px; }
+.eval-tools .eval-btn .ico { color: #b91c1c; font-size: 12px; }
+.eval-tools .eval-btn:hover:not([disabled]) { border-color: #f3b4b4; background: #fff5f5; }
+.eval-tools .eval-btn.accent { border-color: #f3c9c9; background: #fff7f7; color: #9b1c1c; }
+.eval-tools .eval-btn[disabled] { opacity: .45; cursor: not-allowed; }
+.eval-tools .eval-sep { width: 1px; height: 22px; background: #e5e7eb; margin: 0 4px; }
+.eval-tools .eval-lock-note { color: var(--cap, #6b7280); font-size: 12px; margin-left: 4px; }
+.eval-tbl th.eval-chk, .eval-tbl td.eval-chk { width: 48px; text-align: center; }
+.eval-tbl th.num, .eval-tbl td.num { text-align: center; }
+.eval-tbl td.ban { color: #b91c1c; font-weight: 600; }
+.eval-tbl th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+.eval-tbl th.sortable:hover { color: #b91c1c; }
+.eval-tbl th.sorted { color: #9b1c1c; }
+.eval-tbl .sort-arrow { margin-left: 4px; color: #b91c1c; font-weight: 800; }
+.eval-tbl tbody tr[data-act] { cursor: pointer; }
+.eval-tbl tbody tr.on { background: #fdf2f2 !important; }
+.eval-tbl tbody tr[data-act]:hover { background: #fff5f5 !important; }
+.eval-tbl tbody tr.on[data-act]:hover { background: #fbe7e7 !important; }
+.eval-tbl .chk { display: inline-block; width: 18px; height: 18px; border: 2px solid #1f2937; border-radius: 4px; background: #fff; position: relative; vertical-align: middle; }
+.eval-tbl .chk.on, .eval-tbl .chk.tri.all, .eval-tbl .chk.tri.some { border-color: #b91c1c; }
+.eval-tbl .chk.on::after, .eval-tbl .chk.tri.all::after { content: ''; position: absolute; left: 4px; top: 0; width: 5px; height: 10px; border: solid #b91c1c; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
+.eval-tbl .chk.tri.some::after { content: ''; position: absolute; left: 3px; right: 3px; top: 6px; height: 2.5px; background: #b91c1c; border-radius: 2px; }
+.eval-tbl .chk.tri { cursor: pointer; }
+.eval-tbl .chk.tri.off, .eval-tbl tr.locked .chk { opacity: .55; cursor: default; }
