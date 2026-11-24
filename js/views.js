@@ -939,7 +939,7 @@
             if (gapAfter(i)) cls += ' gap-after';
             const tips = iss.map((x) => x.msg);
             if (/\bover\b/.test(cls) && !locked) tips.unshift(`최대 수용인원 ${capN}명 초과 — 인원 ▸ 를 눌러 학생을 옮기거나 [인원 맞추기]를 누르세요.`);
-            return `<td class="pl-cell ${cls}" ${tips.length ? `title="${h(tips.join(' / '))}"` : ''} ${iss.length ? 'data-issue="1"' : ''} data-act="pl-cell" data-k="${slot.key}" data-i="${i}" ${!locked && !cLock && v && v !== C.VOID_CELL ? 'data-drag="cell"' : ''} data-drop="pl" >${locked || S.isLocked(slot.key) ? '' : `<button class="cell-lock ${cLock ? 'on' : ''}" data-act="pl-cell-lock" data-k="${slot.key}" data-i="${i}" title="${cLock ? '잠금 풀기: 다시 자동 배치·인원 맞추기·편집으로 바뀔 수 있습니다' : '이 칸 잠그기: 자동 배치·인원 맞추기·비우기를 해도 바뀌지 않습니다'}" aria-label="${cLock ? '칸 잠금 풀기' : '칸 잠그기'}">${cLock ? LOCK_ON : LOCK_OFF}</button>`}<div class="c-body">${inner}</div>${quick}</td>`;
+            return `<td class="pl-cell ${cls}" ${tips.length ? `title="${h(tips.join(' / '))}"` : ''} ${iss.length ? 'data-issue="1"' : ''} data-act="pl-cell" data-k="${slot.key}" data-i="${i}" ${!locked && !cLock && v && v !== C.VOID_CELL ? 'data-drag="cell"' : ''} data-drop="pl" >${locked || S.isLocked(slot.key) ? (S.isCellLocked(slot.key, i) ? `<span class="cell-lock on static" title="잠근 칸 (배치 확정 상태)">${LOCK_ON}</span>` : '') : `<button class="cell-lock ${cLock ? 'on' : ''}" data-act="pl-cell-lock" data-k="${slot.key}" data-i="${i}" title="${cLock ? '잠금 풀기: 다시 자동 배치·인원 맞추기·편집으로 바뀔 수 있습니다' : '이 칸 잠그기: 자동 배치·인원 맞추기·비우기를 해도 바뀌지 않습니다'}" aria-label="${cLock ? '칸 잠금 풀기' : '칸 잠그기'}">${cLock ? LOCK_ON : LOCK_OFF}</button>`}<div class="c-body">${inner}</div>${quick}</td>`;
           }).join('')}
         </tr>`;
       }).join('');

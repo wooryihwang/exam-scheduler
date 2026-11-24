@@ -658,3 +658,11 @@ body[data-grade="3"] .page { --p-accent: #9b1c1c; }
 .lock-btn.on { color: #b91c1c; }
 .btn .ico-lock.on { color: #b91c1c; }
 .btn .ico-lock.off { color: #64748b; }
+
+/* 칸 자물쇠: 풀린 자물쇠도 늘 흐리게 보임 (마우스를 올리면 진하게) */
+.pl-cell .cell-lock { opacity: .55; color: #64748b; }
+.pl-cell:hover .cell-lock { opacity: 1; }
+.pl-cell .cell-lock.on, .pl-cell .cell-lock.static { opacity: 1; }
+.pl-cell .cell-lock.static { cursor: default; }
+.tbl.pl.compact-view .pl-cell .cell-lock { top: 1px; right: 1px; width: 18px; height: 18px; }
+.tbl.pl.compact-view .pl-cell .cell-lock svg { width: 12px; height: 12px; }
