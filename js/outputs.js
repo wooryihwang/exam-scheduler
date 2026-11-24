@@ -14,6 +14,7 @@
     ['student', '10-6 학생별 시간표'],
     ['label', '10-7 봉투 라벨'],
     ['sp', '10-8 별도 수험생'],
+    ['ind', '10-9 산업학교 학생'],
   ];
   const ui = { tab: 'all', slot: '', room: '', ban: '', day: '', student: '', lbl: 0 };
 
@@ -79,6 +80,9 @@
     const used = heads.reduce((t, w) => t + w, 0), each = ((100 - used) / Math.max(1, n)).toFixed(3);
     return `<colgroup>${heads.map((w) => `<col style="width:${w}%">`).join('')}${Array.from({ length: n }, () => `<col style="width:${each}%">`).join('')}</colgroup>`;
   };
+  /** 응시현황 줄·학생이 산업학교(위탁) 학생인가 */
+  const isInd = (r) => S.isIndustry({ grade: r.grade, ban: r.ban, num: r.num, name: r.name });
+  const IND_MARK = '<span class="ind-mark">산업학교</span>';
   const schoolLine = () => (S.school() ? `<div class="p-school">${h(S.school())}</div>` : '');
   /** 4칸 정보표 (머리글 한 줄 + 값 한 줄). emph: 붉게 강조할 칸 번호 */
   const infoTbl = (items, emph = [], cls = '') => `<table class="ptbl seat-info info4 ${cls}"><thead><tr>${items.map(([k]) => `<th>${k}</th>`).join('')}</tr></thead><tbody><tr>${items.map(([, v], i) => `<td class="${emph.includes(i) ? 'acc' : ''}">${v}</td>`).join('')}</tr></tbody></table>`;
@@ -128,7 +132,7 @@
         const r = arr[k];
         const ext = (x) => (x.extra ? `+${x.extra}분 <small>(~${h(endWithExtra(slotTime(slot), x.extra).split('~')[1] || '')})</small>` : '-');
         const g5 = (k + 1) % 5 === 0 ? 'g5' : '';
-        return r ? `<tr class="${g5}"><td class="no">${pi * perPage + off + k + 1}</td><td>${C.studentNo(r.grade, r.ban, r.num)}</td><td class="nm">${h(r.name)}</td>${sp ? `<td>${h(C.onlySubject(r.subject))}</td><td>${ext(r)}</td>` : ''}<td class="seat"><span class="acc">${r.seat ?? ''}</span></td><td class="memo"></td></tr>` : `<tr class="blank ${g5}"><td class="no">&nbsp;</td><td></td><td></td>${sp ? '<td></td><td></td>' : ''}<td></td><td></td></tr>`;
+        return r ? `<tr class="${g5}"><td class="no">${pi * perPage + off + k + 1}</td><td>${C.studentNo(r.grade, r.ban, r.num)}</td><td class="nm">${h(r.name)}</td>${sp ? `<td>${h(C.onlySubject(r.subject))}</td><td>${ext(r)}</td>` : ''}<td class="seat"><span class="acc">${r.seat ?? ''}</span></td><td class="memo">${isInd(r) ? IND_MARK : ''}</td></tr>` : `<tr class="blank ${g5}"><td class="no">&nbsp;</td><td></td><td></td>${sp ? '<td></td><td></td>' : ''}<td></td><td></td></tr>`;
       }).join('')}</tbody></table>`;
       const subj = isWait ? '대기(자습)' : (c.subject || '');
       return `<div class="page fill roompage" data-sheet="${h(`${slot.day}일${slot.period}교시 ${room.name}${pi ? ` (${pi + 1})` : ''}`)}">
@@ -218,12 +222,15 @@
           if (r.special) sp = true;
           return `<td class="subj">${h(C.onlySubject(r.subject))}</td><td class="room ${r.special ? 'sp' : 'acc'}">${h(r.room)}${r.special ? '(별)' : ''}</td>`;
         }).join('');
-        return `<tr><td class="no">${x.num}</td><td class="nm">${h(x.name)}</td>${cells}<td class="memo">${sp ? '별도 고사실' : ''}</td></tr>`;
+        const ind = S.isIndustry(x);
+        return `<tr class="${ind ? 'ind' : ''}"><td class="no">${x.num}</td><td class="nm">${h(x.name)}</td>${cells}<td class="memo">${ind ? IND_MARK : ''}${sp ? '별도 고사실' : ''}</td></tr>`;
       };
       const blanks = Array.from({ length: Math.max(0, per - chunk.length) }, (_, k) => `<tr class="blank"><td class="no">${pi * per + chunk.length + k + 1}</td><td></td>${slots.map(() => '<td></td><td></td>').join('')}<td></td></tr>`).join('');
+      const inds = chunk.filter((x) => S.isIndustry(x));
+      const indNote = inds.length ? `<p class="p-note ind-note">※ 산업학교 학생 ${inds.length}명(${inds.map((x) => `${x.num}번 ${h(x.name)}`).join(', ')}): 시험 날짜와 고사실을 꼭 연락해 주세요.</p>` : '';
       return `<div class="page fill clspage" data-sheet="${h(`${ban} ${day}일차${pi ? ` (${pi + 1})` : ''}`)}">
         ${sheetHead(`${h(ban)} 시험시간표${home ? ` (고사실 ${h(home.name)})` : ''}`, `${day}일차 · ${h(date || '-')}`, [['학급', h(ban)], ['소속 고사실', h(home ? home.name : '없음')], ['시행일', h(date || '-')], ['인원', `${stu.length}명`]], [1, 3], pages > 1 ? `#${pi + 1} / ${pages}` : '')}
-        <table class="ptbl cls2 sheet5"><colgroup><col style="width:7%"><col style="width:12%">${slots.map(() => `<col style="width:${(72 / slots.length * 0.62).toFixed(2)}%"><col style="width:${(72 / slots.length * 0.38).toFixed(2)}%">`).join('')}<col style="width:9%"></colgroup>
+        ${indNote}<table class="ptbl cls2 sheet5"><colgroup><col style="width:7%"><col style="width:12%">${slots.map(() => `<col style="width:${(72 / slots.length * 0.62).toFixed(2)}%"><col style="width:${(72 / slots.length * 0.38).toFixed(2)}%">`).join('')}<col style="width:9%"></colgroup>
         <thead><tr><th rowspan="2">번호</th><th rowspan="2">성명</th>${slots.map((sl) => `<th colspan="2">${sl.period}교시</th>`).join('')}<th rowspan="2">비고</th></tr><tr class="sub">${slots.map(() => '<th>과목명</th><th>고사실</th>').join('')}</tr></thead>
         <tbody>${chunk.map(row).join('')}${blanks}</tbody></table></div>`;
     }).join('');
@@ -245,7 +252,7 @@
     return `<div class="slip ticket">
       <div class="tk-bar"></div>
       <div class="tk-head">${schoolLine()}<span class="tk-title">${h(S.title())}</span> <span class="tk-suffix">수험표</span></div>
-      <div class="tk-id"><span><small>학번</small><b class="acc">${C.studentNo(x.grade, x.ban, x.num)}</b></span><span><small>성명</small><b>${h(x.name)}</b></span></div>
+      <div class="tk-id"><span><small>학번</small><b class="acc">${C.studentNo(x.grade, x.ban, x.num)}</b></span><span><small>성명</small><b>${h(x.name)}</b></span>${S.isIndustry(x) ? '<span class="ind-tag">산업학교</span>' : ''}</div>
       <table class="ptbl tk-tbl"><colgroup><col style="width:13%"><col style="width:8%"><col style="width:20%"><col style="width:31%"><col style="width:20%"><col style="width:8%"></colgroup><thead><tr><th>일자</th><th>교시</th><th>시간</th><th>과목</th><th>고사실</th><th>좌석</th></tr></thead><tbody>${rows}</tbody></table>
       ${slipNote()}</div>`;
   }
@@ -293,6 +300,44 @@
         <p class="p-note">고사실 뒤에 <b class="amber">(별)</b>이 붙은 교시는 별도 고사실에서 봅니다.</p></div></div>`;
   }
   const pagesSpGuide = (list) => list.map(spGuide).join('');
+
+  // ---------------------------------------------------------------- 10-9 산업학교(위탁) 학생
+  const fmtAt = (t) => new Date(t).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const indExams = (x) => { const idx = byStudent(); return S.slots().map((sl) => ({ sl, r: idx.get(`${x.key}|${sl.key}`) })).filter((y) => y.r && y.r.subject !== '미응시'); };
+  /** 학생별 안내·확인표 (한 장에 한 명) */
+  function indGuide(x) {
+    const exams = indExams(x);
+    const examDaySet = new Set(exams.map((y) => y.sl.day));
+    const free = examDays().filter((d) => !examDaySet.has(d)).map((d) => `${d}일차(${h(U.fmtDateShort(st().dates[d - 1]))})`);
+    const c = S.industryContact(x.key);
+    const rows = exams.map(({ sl, r }, k) => `<tr><td class="no">${k + 1}</td><td class="nm">${h(U.fmtDateShort(slotDate(sl)) || '-')} <small>${sl.day}일차</small></td><td>${sl.period}교시</td><td>${h(slotTime(sl).replace(/\s/g, ''))}</td><td class="nm">${h(C.onlySubject(r.subject))}</td><td class="acc">${h(r.room)}${r.special ? '(별)' : ''}</td><td>${r.seat ?? ''}</td></tr>`).join('');
+    return `<div class="page fill indpage" data-sheet="${h(`산업학교 ${x.ban} ${x.num} ${x.name}`)}">
+      ${sheetHead('산업학교 학생 시험 안내', '산업학교 수업이 있는 날이라도 아래 시간에는 학교로 와서 시험을 봅니다.', [['학년·반·번호', `${x.grade}학년 ${h(x.ban)} ${x.num}번`], ['성명', h(x.name)], ['시험 과목', `${exams.length}과목`], ['시험 날짜', `${examDaySet.size}일`]], [1, 2])}
+      <table class="ptbl sheet5 ind-rows"><colgroup><col style="width:8%"><col style="width:20%"><col style="width:10%"><col style="width:17%"><col><col style="width:13%"><col style="width:8%"></colgroup>
+      <thead><tr><th>연번</th><th>날짜</th><th>교시</th><th>시간</th><th>과목</th><th>고사실</th><th>좌석</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="7">시험 보는 과목이 없습니다.</td></tr>'}</tbody></table>
+      ${free.length ? `<p class="p-note">· 시험이 없는 날: ${free.join(', ')}</p>` : ''}
+      <h4 class="ind-h">연락·확인</h4>
+      <table class="ptbl ind-sign"><colgroup><col style="width:22%"><col style="width:22%"><col style="width:26%"><col></colgroup>
+      <thead><tr><th>확인</th><th>날짜</th><th>방법</th><th>서명</th></tr></thead><tbody>
+        <tr><td class="nm">담임 선생님 연락</td><td>${c ? h(fmtAt(c.at)) : ''}</td><td>전화 · 문자 · 직접</td><td></td></tr>
+        <tr><td class="nm">학생 확인</td><td></td><td></td><td></td></tr>
+        <tr><td class="nm">산업학교 담당 선생님</td><td></td><td></td><td></td></tr></tbody></table></div>`;
+  }
+  /** 연락 확인 명단 (평가계용) */
+  function pageIndList() {
+    const list = S.industryStudents();
+    const done = list.filter((x) => S.industryContact(x.key)).length;
+    const rows = list.map((x, k) => {
+      const exams = indExams(x), days = [...new Set(exams.map((y) => y.sl.day))].sort((a, b) => a - b);
+      const c = S.industryContact(x.key);
+      return `<tr class="${c ? '' : 'todo'}"><td class="no">${k + 1}</td><td>${C.studentNo(x.grade, x.ban, x.num)}</td><td class="nm">${h(x.name)}</td><td>${exams.length}과목</td><td>${days.map((d) => `${d}일차`).join(', ') || '-'}</td><td class="${c ? 'acc' : ''}">${c ? `✓ ${h(fmtAt(c.at))}` : '미확인'}</td><td></td></tr>`;
+    }).join('');
+    return `<div class="page fill indlist" data-sheet="산업학교 연락 확인">
+      ${sheetHead('산업학교 학생 연락 확인 명단', '담임 선생님이 시험 날짜·고사실을 알렸는지 확인합니다.', [['대상', `${list.length}명`], ['연락 완료', `${done}명`], ['미확인', `${list.length - done}명`], ['출력일', h(U.fmtDate(new Date().toISOString().slice(0, 10)))]], [2])}
+      <table class="ptbl sheet5 ind-list"><colgroup><col style="width:7%"><col style="width:12%"><col style="width:14%"><col style="width:10%"><col><col style="width:18%"><col style="width:14%"></colgroup>
+      <thead><tr><th>연번</th><th>학번</th><th>성명</th><th>시험</th><th>시험 날짜</th><th>담임 연락</th><th>확인</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
   /** 교시별 명렬 (별도실마다 한 장): 감독용 */
   function pagesSpList() {
     const out = [];
@@ -434,6 +479,15 @@
         scopes = [['cur', cur ? `미리보기 라벨 1개 (${cur.room})` : '미리보기 라벨'], ['every', `전체 라벨 (${ls.length}개)`]];
         break;
       }
+      case 'ind': {
+        const list = S.industryStudents(), mode = ui.indMode || 'guide';
+        if (!list.some((x) => x.key === ui.indStu)) ui.indStu = list[0] ? list[0].key : '';
+        ctrl = radios('o-indmode', '종류', [['guide', '학생별 안내·확인표'], ['list', '연락 확인 명단 (평가계용)']], mode) + (mode === 'guide' && list.length ? sel('o-indstu', list.map((x) => [x.key, `${x.ban} ${x.num}번 ${x.name}`]), ui.indStu) : '');
+        if (!list.length) preview = '<div class="empty"><p>산업학교 학생이 없습니다. <b>1. 학생편성현황</b> 명단에서 [산업학교]를 눌러 표시하면 여기에 안내·확인표와 연락 확인 명단이 만들어집니다.</p></div>';
+        else preview = mode === 'guide' ? list.filter((x) => x.key === ui.indStu).map(indGuide).join('') : pageIndList();
+        scopes = mode === 'guide' ? [['cur', '선택한 학생'], ['every', `산업학교 학생 전체 (${list.length}명)`]] : [['every', '연락 확인 명단']];
+        break;
+      }
       case 'sp': {
         const list = spStudents(), mode = ui.spMode || 'guide';
         if (!list.some((x) => x.key === ui.spStu)) ui.spStu = list[0] ? list[0].key : '';
@@ -481,6 +535,12 @@
         if (scope === 'slot') return examDays().map((d) => pageClass(ui.ban, d)).join('');
         return bans.map((b) => examDays().map((d) => pageClass(b, d)).join('')).join('');
       case 'student': return pagesStudents(scope === 'one' ? S.students().filter((x) => x.key === ui.stu) : scope === 'slot' ? S.students().filter((x) => x.ban === ui.ban) : S.students());
+      case 'ind': {
+        const list = S.industryStudents();
+        if (!list.length) return '';
+        if ((ui.indMode || 'guide') === 'list') return pageIndList();
+        return (scope === 'cur' ? list.filter((x) => x.key === ui.indStu) : list).map(indGuide).join('');
+      }
       case 'sp': return (ui.spMode || 'guide') === 'list' ? pagesSpList() : pagesSpGuide(scope === 'cur' ? spStudents().filter((x) => x.key === ui.spStu) : spStudents());
       case 'label': { const ls = labels(); return pagesLabels(scope === 'cur' ? ls.filter((l) => l.n === ui.lbl) : ls); }
     }
@@ -670,6 +730,8 @@
       'o-noteon'(el) { S.setOut('slipNoteOn', el.checked); },
       'o-stu'(el) { ui.stu = el.value; ui.scopes.student = 'one'; rerender(); },
       'o-spmode'(el) { ui.spMode = el.value; rerender(); },
+      'o-indmode'(el) { ui.indMode = el.value; rerender(); },
+      'o-indstu'(el) { ui.indStu = el.value; rerender(); },
       'o-spstu'(el) { ui.spStu = el.value; rerender(); },
       'o-code'(el) { S.setSubjectCode(el.dataset.s, el.value.trim()); },
       'o-lbl'(el) { ui.lbl = +el.value; rerender(); },

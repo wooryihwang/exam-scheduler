@@ -201,4 +201,24 @@ const resetTest = () => t('학년별 초기화 · 전체 초기화', () => {
   assert.strictEqual(S.projects().map((p) => p.name).join(','), names);
 });
 
-Promise.all(pending).then(() => { resetTest(); console.log(`\n${pass}개 테스트 통과`); }).catch((e) => { console.error(e); process.exit(1); });
+const industryTest = () => t('산업학교 학생: 표시 기억 · 연락 확인', () => {
+  S.newProject('산업'); S.importRows(rows, 'i.xlsx');
+  const x = S.rosterStudents()[0];
+  S.setIndustry(x, true);
+  assert.ok(S.isIndustry(x));
+  // 다른 작업 공간에서 같은 학생 자료를 다시 불러와도 학번·이름으로 다시 표시됨
+  S.newProject('산업2'); S.importRows(rows, 'j.xlsx');
+  assert.ok(S.isIndustry(S.rosterStudents().find((y) => y.key === x.key)));
+  // 같은 학번이라도 이름이 다르면 표시하지 않음
+  assert.strictEqual(S.isIndustry({ ...x, name: x.name + '다름' }), false);
+  S.confirmRoster(); S.setAllEval(true); S.confirmSubjects();
+  const ind = S.industryStudents();
+  assert.strictEqual(ind.length, 1);
+  assert.strictEqual(S.industryUncontacted().length, 1);
+  S.setIndustryContact(ind[0].key, true);
+  assert.strictEqual(S.industryUncontacted().length, 0);
+  S.setIndustry(x, false);
+  assert.strictEqual(S.industryStudents().length, 0);
+});
+
+Promise.all(pending).then(() => { resetTest(); industryTest(); console.log(`\n${pass}개 테스트 통과`); }).catch((e) => { console.error(e); process.exit(1); });

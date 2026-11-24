@@ -137,6 +137,8 @@
       const shown = list; // 검색은 줄 숨김으로 처리 (main.js applyFilter)
       const locked = s.confirmed.roster;
       const conv = list.filter((x) => x.convenience).length;
+      const indN = list.filter((x) => S.isIndustry(x)).length;
+      const indBtn = (x) => { const on = S.isIndustry(x); return `<button class="btn ghost xs ind-btn ${on ? 'on' : ''}" data-act="roster-ind" data-key="${h(x.key)}" title="${on ? '산업학교 표시를 지웁니다' : '산업학교(위탁) 수업을 받는 학생으로 표시합니다. 출력물에 표시되고 응시현황에서 담임 연락을 확인합니다.'}">${on ? '산업학교 해제' : '산업학교'}</button>`; };
       return head +
         banner(locked ? 'ok' : 'info', locked ? '학생편성현황을 확정하였습니다. <b>2. 기초정보</b>에서 고사 일자·시간과 고사실을 확인하세요.' : '미확정 상태입니다. 학생 명단을 확인한 뒤 <b>학생편성현황 확정</b>을 누르세요.') +
         `<div class="stats">
@@ -145,6 +147,7 @@
           ${stat('수강 내역', s.rows.length + '건')}
           ${stat('개설 과목', new Set(s.rows.map((x) => x.과목)).size + '과목')}
           ${stat('편의반', conv + '명')}
+          ${stat('산업학교', indN + '명', '시험 연락 확인 대상')}
         </div>
         <div class="toolbar">
           ${searchBox('roster-q', '반·번호·이름 검색', ui.rosterQ, 'roster-tbody')}
@@ -153,14 +156,14 @@
         </div>
         <div class="table-wrap tall">
           <table class="tbl">
-            <thead><tr><th>반</th><th>번호</th><th>성명</th><th>수강 과목 수</th><th>고사실</th><th class="right" title="편의반 이동 · 학생 삭제 (확정 전에만 가능)">관리</th></tr></thead>
+            <thead><tr><th>반</th><th>번호</th><th>성명</th><th>수강 과목 수</th><th>고사실</th><th class="right" title="산업학교 표시 · 편의반 이동 · 학생 삭제 (편의반·삭제는 확정 전에만)">관리</th></tr></thead>
             <tbody id="roster-tbody">${shown.map((x) => `
-              <tr data-q="${h(`${x.ban} ${x.num} ${x.name}`)}">
+              <tr class="${S.isIndustry(x) ? 'ind' : ''}" data-q="${h(`${x.ban} ${x.num} ${x.name}`)}">
                 <td>${h(x.ban)}</td><td>${x.num}</td>
                 <td><button class="link" data-act="roster-detail" data-key="${h(x.key)}">${h(x.name)}</button></td>
                 <td>${x.count}</td>
-                <td>${x.convenience ? '<span class="badge warn">편의반</span>' : '<span class="muted">소속 반</span>'}</td>
-                <td class="right">${locked ? '<span class="muted sm">확정됨</span>' : `
+                <td>${x.convenience ? '<span class="badge warn">편의반</span>' : '<span class="muted">소속 반</span>'}${S.isIndustry(x) ? ' <span class="badge ind">산업학교</span>' : ''}</td>
+                <td class="right">${indBtn(x)} ${locked ? '<span class="muted sm">확정됨</span>' : `
                   ${x.convenience ? `<button class="btn ghost xs" data-act="roster-restore" data-key="${h(x.key)}">편의반 해제</button>` : `<button class="btn ghost xs" data-act="roster-conv" data-key="${h(x.key)}">편의반 이동</button>`}
                   <button class="btn ghost xs danger-text" data-act="roster-del" data-key="${h(x.key)}">삭제</button>`}
                 </td>
@@ -168,7 +171,7 @@
             </tbody>
           </table>
         </div>
-        <p class="hint">편의반: 편의제공 대상 학생이 별도 고사실에서 응시할 때 사용합니다. 학생 삭제: 시험을 보지 않는 학생을 명단에서 뺍니다.</p>`;
+        <p class="hint">편의반: 편의제공 대상 학생이 별도 고사실에서 응시할 때 사용합니다. 학생 삭제: 시험을 보지 않는 학생을 명단에서 뺍니다. 산업학교: 산업학교(위탁)에서 수업을 받는 학생을 표시하면 출력물에 드러나고, 9. 응시현황에서 담임 연락을 확인합니다. 표시는 학번·이름으로 기억해 다음 시험에도 그대로 남습니다.</p>`;
     },
     actions: {
       'load-sample'(el) { const g = +el.dataset.g || 1; importAoa(Sample.sampleAoa(g), `샘플_학생편성현황_${g}학년.xlsx`); },
@@ -241,6 +244,12 @@
         if (await U.confirm(`【 ${x.ban} ${x.num}번 ${x.name} 】 학생을 편의반으로 이동할까요?\n\n모든 과목의 강의실이 '편의반'으로 바뀌어 별도 고사실에서 응시합니다.`)) S.moveToConvenience(x.key);
       },
       'roster-restore'(el) { S.restoreRoom(el.dataset.key); },
+      'roster-ind'(el) {
+        const x = S.rosterStudents().find((s) => s.key === el.dataset.key); if (!x) return;
+        const on = !S.isIndustry(x);
+        S.setIndustry(x, on);
+        U.toast(`${x.ban} ${x.num}번 ${x.name}: ${on ? '산업학교 학생으로 표시했습니다.' : '산업학교 표시를 지웠습니다.'}`, 'ok');
+      },
       'roster-detail'(el) {
         const rows = st().rows.filter((x) => C.studentKey(x.반, x.번호) === el.dataset.key);
         const x = rows[0];
@@ -1394,7 +1403,7 @@
         `<button class="btn ghost" data-act="seat-export">엑셀 저장</button>` +
         (locked ? '' : `<button class="btn outline" data-act="seat-order">좌석 학번순</button><button class="btn outline" data-act="seat-random">좌석 랜덤</button>`) +
         confirmBtn(locked, '응시현황 확정 취소', '응시현황 확정', locked ? 'seat-unconfirm' : 'seat-confirm')) +
-        banner(type, msg) +
+        banner(type, msg) + industryCard(s) +
         `<div class="toolbar">
           <select class="input sm" data-change="sf" data-f="day">${opt(days, f.day)}</select>
           <select class="input sm" data-change="sf" data-f="period">${opt(periods, f.period)}</select>
@@ -1410,7 +1419,18 @@
     actions: {
       async 'seat-order'() { if (await U.confirm('좌석번호를 학번순으로 지정할까요?')) { S.seatsInOrder(); U.toast('학번순으로 지정하였습니다.', 'ok'); } },
       async 'seat-random'() { if (await U.confirm('좌석번호를 랜덤으로 지정할까요?\n\n※ 대기실은 제외됩니다.')) { S.seatsRandom(); U.toast('랜덤으로 지정하였습니다.', 'ok'); } },
-      'seat-confirm'() {
+      async 'seat-confirm'() {
+        const un = S.industryUncontacted();
+        if (un.length) {
+          const v = await U.modal({
+            title: '산업학교 학생 연락 확인',
+            body: `<p>담임 선생님 연락이 확인되지 않은 산업학교 학생이 <b class="danger-text">${un.length}명</b> 있습니다. 연락을 못 받으면 시험을 놓칠 수 있습니다.</p>
+              <ul class="hint-list">${un.map((x) => `<li>${h(x.ban)} ${x.num}번 <b>${h(x.name)}</b></li>`).join('')}</ul>
+              <p class="hint">연락한 뒤 아래 표의 <b>연락</b> 칸을 체크하세요. [10-9 산업학교 학생]에서 안내·확인표를 인쇄해 담임 선생님께 드릴 수 있습니다.</p>`,
+            buttons: [{ label: '돌아가서 확인', value: null, cls: 'primary' }, { label: '그래도 확정', value: 'ok', cls: 'danger-text ghost' }],
+          });
+          if (v !== 'ok') return;
+        }
         const errs = S.confirmSeats();
         if (errs.length) return U.alertList('응시현황을 확정할 수 없습니다', '아래 내용을 확인하세요.', errs);
         U.toast('응시현황을 확정하였습니다. 출력물을 인쇄할 수 있습니다.', 'ok');
@@ -1420,8 +1440,28 @@
       'seat-more'() { ui.seatShow += 200; rerender(true); },
       'seat-all'() { ui.seatShow = 6000; rerender(true); },
     },
-    change: { sf(el) { ui.seatFilter[el.dataset.f] = el.value; if (el.dataset.f !== 'q') rerender(true); } },
+    change: {
+      sf(el) { ui.seatFilter[el.dataset.f] = el.value; if (el.dataset.f !== 'q') rerender(true); },
+      'ind-contact'(el) { S.setIndustryContact(el.dataset.key, el.checked); },
+    },
   };
+
+  /** 9단계: 산업학교 학생 담임 연락 확인 카드 */
+  function industryCard(s) {
+    const list = S.industryStudents();
+    if (!list.length) return '';
+    const done = list.filter((x) => S.industryContact(x.key)).length;
+    const fmt = (t) => new Date(t).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const rows = list.map((x) => {
+      const mine = s.seating.filter((r) => C.studentKey(r.ban, r.num) === x.key && r.subject !== '미응시');
+      const days = [...new Set(mine.map((r) => C.parseSlotKey(r.slot)[0]))].sort((a, b) => a - b);
+      const c = S.industryContact(x.key);
+      return `<tr class="${c ? '' : 'todo'}"><td class="chk-cell"><input type="checkbox" data-change="ind-contact" data-key="${h(x.key)}" ${c ? 'checked' : ''} title="담임 선생님이 시험 날짜·고사실을 알렸으면 체크"></td><td>${h(x.ban)}</td><td>${x.num}</td><td><b>${h(x.name)}</b></td><td>${mine.length}과목</td><td>${days.map((d) => `${d}일차<small class="muted">(${h(U.fmtDateShort(s.dates[d - 1]))})</small>`).join(', ') || '-'}</td><td class="muted sm">${c ? fmt(c.at) : '<span class="danger-text">미확인</span>'}</td></tr>`;
+    }).join('');
+    return `<div class="card ind-card"><div class="card-head"><h3>산업학교 학생 연락 확인 <span class="sel-badge ${done === list.length ? 'ok' : ''}">${done}/${list.length}명 완료</span></h3>
+      <span class="muted sm">담임 선생님이 시험 날짜·고사실을 알렸으면 체크하세요. 안내·확인표는 [10-9 산업학교 학생]에서 인쇄합니다.</span></div>
+      <table class="tbl compact ind-tbl"><thead><tr><th>연락</th><th>반</th><th>번호</th><th>성명</th><th>시험</th><th>시험 날짜</th><th>확인 시각</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
 
   function exportSeating() {
     if (!window.XLSX) return U.alert('엑셀 모듈을 불러오지 못했습니다.');
