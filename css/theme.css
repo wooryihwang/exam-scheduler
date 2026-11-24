@@ -584,3 +584,15 @@ body[data-grade="3"] .page { --p-accent: #9b1c1c; }
 .page.allpage .ptbl.all tr.day-even td.p-wait { background-color: #e6eaf0; }
 .page.allpage .ptbl.all tr.day-start td { border-top: 2px solid var(--p-ink) !important; }
 .page.allpage .ptbl.all tr td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+/* 사이드바: 학년별 초기화 · 전체 초기화 */
+.foot-row3 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 2px; }
+.foot-row3 .btn { justify-content: center; gap: 4px; padding: 6px 4px; font-size: 13px; border: 1px solid #f3c9c9; border-radius: 10px; background: #fff; white-space: nowrap; }
+.foot-row3 .btn:hover { background: #fff5f5; }
+.foot-row3 .btn.strong { background: #fff5f5; font-weight: 800; }
+.rs-list { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+.rs-opt { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 10px; cursor: pointer; }
+.rs-opt:has(input:checked) { border-color: #dc2626; background: #fff5f5; }
+.rs-opt.empty b { color: #6b7280; }
+.rs-opt .muted { margin-left: auto; }
+.danger-hint { color: #b91c1c; }

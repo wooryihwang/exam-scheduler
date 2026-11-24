@@ -857,6 +857,27 @@
     setTheme(v) { index.theme = v; writeJSON(INDEX_KEY, index); commit(); },
     setSubjectCode(s, v) { state.subjectCodes[s] = v; commit(); },
     resetAll() { state = blank(); commit(); },
+    /** 작업 공간 하나를 비운다 (목록·이름은 그대로). 열려 있는 작업이면 화면도 바로 비운다 */
+    resetProject(id) {
+      const p = index.list.find((x) => x.id === id); if (!p) return;
+      if (id === index.current) { state = blank(); undoStack = []; redoStack = []; }
+      else writeJSON(pKey(id), blank());
+      p.fileName = '';
+      writeJSON(INDEX_KEY, index);
+      commit();
+    },
+    /** 모든 작업 공간을 비운다. 학년 이름·학교 이름·화면 설정은 남긴다 */
+    resetEverything() {
+      for (const p of index.list) { if (p.id !== index.current) writeJSON(pKey(p.id), blank()); p.fileName = ''; }
+      state = blank(); undoStack = []; redoStack = [];
+      writeJSON(INDEX_KEY, index);
+      commit();
+    },
+    /** 작업 공간 하나의 저장 내용(JSON 글자). 자료가 없으면 '' */
+    projectJSON(id) {
+      const x = id === index.current ? state : readJSON(pKey(id));
+      return x && x.rows && x.rows.length ? JSON.stringify(x) : '';
+    },
     /** 현재 작업 공간을 지우고 목록에서도 삭제 */
     deleteCurrentProject() { S.deleteProject(index.current); },
     exportJSON() { return JSON.stringify(state); },

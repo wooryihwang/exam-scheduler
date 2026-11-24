@@ -180,4 +180,25 @@ t('새 고사 시작: 자료는 지우고 고사실·시간·과목코드는 남
   assert.deepStrictEqual(S.state.subjectCodes, {}, '과목코드 지움');
 });
 
-Promise.all(pending).then(() => console.log(`\n${pass}개 테스트 통과`)).catch((e) => { console.error(e); process.exit(1); });
+// 다른 테스트가 모두 끝난 뒤에 돌린다 (전체 초기화가 공용 자료를 지우므로)
+const resetTest = () => t('학년별 초기화 · 전체 초기화', () => {
+  const g1 = S.newProject('초기화1'); S.importRows(rows, 'a.xlsx');
+  const g2 = S.newProject('초기화2'); S.importRows(rows, 'b.xlsx');
+  assert.ok(S.projectHasRows(g1) && S.projectHasRows(g2));
+  // 열려 있지 않은 학년만 비우기: 다른 학년은 그대로
+  S.resetProject(g1);
+  assert.strictEqual(S.projectHasRows(g1), false);
+  assert.strictEqual(S.projectHasRows(g2), true);
+  assert.ok(S.projectJSON(g2).length > 0 && S.projectJSON(g1) === '');
+  // 열려 있는 학년 비우기
+  S.resetProject(g2);
+  assert.strictEqual(S.state.rows.length, 0);
+  // 전체 초기화: 모든 작업 공간이 비고, 이름은 남음
+  S.importRows(rows, 'c.xlsx'); S.switchProject(g1); S.importRows(rows, 'd.xlsx');
+  const names = S.projects().map((p) => p.name).join(',');
+  S.resetEverything();
+  assert.ok(S.projects().every((p) => !S.projectHasRows(p.id)));
+  assert.strictEqual(S.projects().map((p) => p.name).join(','), names);
+});
+
+Promise.all(pending).then(() => { resetTest(); console.log(`\n${pass}개 테스트 통과`); }).catch((e) => { console.error(e); process.exit(1); });

@@ -107,6 +107,14 @@
   }
 
   // ---------------------------------------------------------------- 클릭
+  /** 작업 공간 하나를 작업 파일(JSON)로 내려받는다 */
+  function downloadProject(p) {
+    const json = S.projectJSON(p.id);
+    if (!json) return;
+    const d = new Date();
+    const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
+    U.download(`고사배치_${p.name}_${stamp}.json`, json);
+  }
   const globalActions = {
     go(el) { go(el.dataset.view); },
     'toggle-nav'() { document.body.classList.toggle('nav-open'); },
@@ -192,19 +200,48 @@
       const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
       U.download(`고사배치_${S.currentProject().name}_${stamp}.json`, S.exportJSON());
     },
-    async 'reset-all'() {
-      const g = S.currentGrade(), name = S.currentProject().name;
-      const has = S.state.rows.length > 0;
+    /** 학년별 초기화: 고른 학년(작업 공간)만 비운다 */
+    async 'reset-grade'() {
+      const list = S.projects();
+      const cur = S.currentProject();
+      let pick = cur.id;
+      const row = (p) => {
+        const has = S.projectHasRows(p.id), file = S.projectFile(p);
+        return `<label class="rs-opt ${has ? '' : 'empty'}"><input type="radio" name="rs-pick" value="${p.id}" ${p.id === pick ? 'checked' : ''}>
+          <b>${h(p.name)}</b><span class="muted sm">${has ? (file ? h(file) : '작업 있음') : '비어 있음'}${p.id === cur.id ? ' · 지금 여는 작업' : ''}</span></label>`;
+      };
       const v = await U.modal({
-        title: `${g ? g + '학년' : '현재'} 작업 초기화`,
-        body: `<p><b>「${h(name)}」</b> 작업만 비웁니다. 학생편성현황·시간표·배치·응시현황·고사실·시간 설정이 모두 지워지고, <b>다른 학년 작업은 그대로</b> 남습니다.</p>
+        title: '학년별 초기화',
+        body: `<p>비울 학년을 고르세요. 그 학년의 학생편성현황·시간표·배치·응시현황·고사실·시간 설정이 모두 지워지고, <b>다른 학년 작업은 그대로</b> 남습니다.</p>
+          <div class="rs-list">${list.map(row).join('')}</div>
           <p class="hint">※ 되돌릴 수 없습니다. 필요하면 <b>파일 저장 후 초기화</b>를 누르세요. (단계를 확정할 때 남은 스냅샷은 '자동 저장 &amp; 스냅샷'에서 복구할 수 있습니다)</p>`,
-        buttons: [{ label: '취소', value: null }, ...(has ? [{ label: '파일 저장 후 초기화', value: 'backup' }] : []), { label: '초기화', value: 'ok', cls: 'danger-text ghost' }],
+        buttons: [{ label: '취소', value: null }, { label: '파일 저장 후 초기화', value: 'backup' }, { label: '이 학년 초기화', value: 'ok', cls: 'danger-text ghost' }],
+        onMount(m) { m.addEventListener('change', (e) => { if (e.target.name === 'rs-pick') pick = e.target.value; }); },
       });
       if (!v) return;
-      if (v === 'backup') globalActions.backup();
-      S.resetAll(); go('roster');
-      U.toast(`${g ? g + '학년' : '현재'} 작업을 초기화하였습니다.`, 'ok');
+      const p = list.find((x) => x.id === pick);
+      if (!p) return;
+      if (v === 'backup') downloadProject(p);
+      S.resetProject(p.id);
+      if (p.id === S.currentProject().id) go('roster');
+      U.toast(`「${p.name}」 작업을 초기화하였습니다.`, 'ok');
+    },
+    /** 전체 초기화: 모든 학년 작업을 비운다 (학교 이름 등 설정은 남김) */
+    async 'reset-everything'() {
+      const list = S.projects();
+      const withData = list.filter((p) => S.projectHasRows(p.id));
+      const v = await U.modal({
+        title: '전체 초기화',
+        body: `<p><b>모든 학년</b>의 작업을 한꺼번에 비웁니다.${withData.length ? ` 지금 자료가 있는 작업: <b>${withData.map((p) => h(p.name)).join(', ')}</b>` : ' 지금은 자료가 있는 작업이 없습니다.'}</p>
+          <p>학년 이름, 학교 이름과 화면 설정은 남습니다.</p>
+          <p class="hint danger-hint">※ 되돌릴 수 없습니다. 필요하면 <b>모든 학년 파일 저장 후 초기화</b>를 누르세요. 학년마다 작업 파일이 하나씩 내려받아집니다.</p>`,
+        buttons: [{ label: '취소', value: null }, ...(withData.length ? [{ label: '모든 학년 파일 저장 후 초기화', value: 'backup' }] : []), { label: '전체 초기화', value: 'ok', cls: 'danger' }],
+      });
+      if (!v) return;
+      if (!(await U.confirm('정말 모든 학년 작업을 지울까요?', '전체 초기화', '모두 지우기'))) return;
+      if (v === 'backup') withData.forEach((p) => downloadProject(p));
+      S.resetEverything(); go('roster');
+      U.toast('모든 학년 작업을 초기화하였습니다.', 'ok');
     },
     undo() { doUndo(false); },
     'proj-new'() { S.newProject(); go('roster'); U.toast('새 작업 공간을 만들었습니다. 학생편성현황을 불러오면 학년 이름이 붙습니다.', 'ok'); },
