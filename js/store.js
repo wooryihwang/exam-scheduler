@@ -821,7 +821,6 @@
     setSpecialMode(key, mode) {
       const x = state.special.students[key]; if (!x) return;
       x.mode = mode === 'pick' ? 'pick' : 'all';
-      if (x.mode === 'pick' && !Object.keys(x.slots).length) for (const sl of S.specialExamSlots(key)) x.slots[sl.slot] = x.extra;
       commit();
     },
     /** 고른 교시 켜기/끄기 (minutes 가 null 이면 끔) */
@@ -831,7 +830,13 @@
       commit();
     },
     /** 학생이 시험을 보는 교시 목록 [{slot, subject}] */
-    specialExamSlots(key) { return state.seating.filter((r) => C.studentKey(r.ban, r.num) === key && r.subject !== '미응시').map((r) => ({ slot: r.slot, subject: r.subject })); },
+    specialExamSlots(key) {
+      if (state.seating.length) return state.seating.filter((r) => C.studentKey(r.ban, r.num) === key && r.subject !== '미응시').map((r) => ({ slot: r.slot, subject: r.subject }));
+      // 응시현황을 만들기 전: 시간표와 학생의 평가 과목으로 계산
+      const stu = S.students().find((x) => x.key === key);
+      if (!stu) return [];
+      return C.examSlots(state.timetable).map((sl) => ({ slot: sl.key, subject: sl.subjects.find((x) => stu.subjects.includes(x)) })).filter((x) => x.subject);
+    },
     /** 이 교시에 별도실로 가는가 → { room, extra } 또는 null */
     specialPlan(key, slotKey) {
       const x = state.special.students[key];

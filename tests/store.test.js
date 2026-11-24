@@ -132,6 +132,9 @@ t('별도실: 학생별 추가 시간 · 고른 교시만', () => {
   S.setSpecialMode(stu.key, 'pick');
   const exams = S.specialExamSlots(stu.key);
   assert.ok(exams.length > 0);
+  // 교시 지정은 빈 상태에서 시작 → 고른 교시만 별도실
+  assert.strictEqual(S.finalSeating().filter((x) => C.studentKey(x.ban, x.num) === stu.key && x.special).length, 0);
+  exams.forEach((e) => S.setSpecialSlot(stu.key, e.slot, 10));
   S.setSpecialSlot(stu.key, exams[0].slot, null);
   assert.strictEqual(S.specialPlan(stu.key, exams[0].slot), null, '고르지 않은 교시는 원래 고사실');
   const fin = S.finalSeating().filter((x) => C.studentKey(x.ban, x.num) === stu.key && x.special);

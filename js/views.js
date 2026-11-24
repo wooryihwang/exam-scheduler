@@ -137,6 +137,9 @@
       const shown = list; // 검색은 줄 숨김으로 처리 (main.js applyFilter)
       const locked = s.confirmed.roster;
       const conv = list.filter((x) => x.convenience).length;
+      const spSt = s.special.students || {};
+      const spN = list.filter((x) => spSt[x.key] && spSt[x.key].room).length;
+      const spBtns = (x) => [1, 2].map((k) => { const on = spSt[x.key] && spSt[x.key].room === k; return `<button class="btn xs sp-pre ${on ? 'on' : 'ghost'}" data-act="roster-sp" data-key="${h(x.key)}" data-room="${on ? 0 : k}" title="${on ? '별도 고사실 지정을 풉니다' : `별도 ${k}실(${h(S.specialRoom(k).name)})에서 시험을 봅니다. 자세한 설정은 8. 별도 고사실에서`}">${on ? '✓ ' : ''}별도 ${k}실</button>`; }).join('');
       const indOn = S.industryEnabled();
       const indN = indOn ? list.filter((x) => S.isIndustry(x)).length : 0;
       const indBtn = (x) => { const on = S.isIndustry(x); return `<button class="btn ghost xs ind-btn ${on ? 'on' : ''}" data-act="roster-ind" data-key="${h(x.key)}" title="${on ? '위탁학생 표시를 지웁니다' : '위탁 교육 기관에서 수업을 받는 위탁학생으로 표시합니다. 출력물에 표시되고 응시현황에서 담임 연락을 확인합니다.'}">${on ? '위탁학생 해제' : '위탁학생'}</button>`; };
@@ -147,7 +150,7 @@
           ${stat('학생 수', list.length + '명', `${bans.length}개 반`)}
           ${stat('수강 내역', s.rows.length + '건')}
           ${stat('개설 과목', new Set(s.rows.map((x) => x.과목)).size + '과목')}
-          ${stat('편의반', conv + '명')}
+          ${stat('별도 고사실', spN + '명', conv ? `편의반 ${conv}명` : '')}
           ${indOn ? stat('위탁학생', indN + '명', '시험 연락 확인 대상') : ''}
         </div>
         <div class="toolbar">
@@ -157,22 +160,22 @@
         </div>
         <div class="table-wrap tall">
           <table class="tbl">
-            <thead><tr><th>반</th><th>번호</th><th>성명</th><th>수강 과목 수</th><th>고사실</th><th class="right" title="${indOn ? '위탁학생 표시 · ' : ''}편의반 이동 · 학생 삭제 (편의반·삭제는 확정 전에만)">관리</th></tr></thead>
+            <thead><tr><th>반</th><th>번호</th><th>성명</th><th>수강 과목 수</th><th>고사실</th><th class="right" title="${indOn ? '위탁학생 표시 · ' : ''}별도 고사실 지정 · 학생 삭제 (삭제는 확정 전에만)">관리</th></tr></thead>
             <tbody id="roster-tbody">${shown.map((x) => `
               <tr class="${S.isIndustry(x) ? 'ind' : ''}" data-q="${h(`${x.ban} ${x.num} ${x.name}`)}">
                 <td>${h(x.ban)}</td><td>${x.num}</td>
                 <td><button class="link" data-act="roster-detail" data-key="${h(x.key)}">${h(x.name)}</button></td>
                 <td>${x.count}</td>
-                <td>${x.convenience ? '<span class="badge warn">편의반</span>' : '<span class="muted">소속 반</span>'}${S.isIndustry(x) ? ' <span class="badge ind">위탁학생</span>' : ''}</td>
-                <td class="right">${indOn ? indBtn(x) : ''} ${locked ? '<span class="muted sm">확정됨</span>' : `
-                  ${x.convenience ? `<button class="btn ghost xs" data-act="roster-restore" data-key="${h(x.key)}">편의반 해제</button>` : `<button class="btn ghost xs" data-act="roster-conv" data-key="${h(x.key)}">편의반 이동</button>`}
+                <td>${spSt[x.key] && spSt[x.key].room ? `<span class="badge sp">${h(S.specialRoom(spSt[x.key].room).name)}</span>` : x.convenience ? '<span class="badge warn">편의반</span>' : '<span class="muted">소속 반</span>'}${S.isIndustry(x) ? ' <span class="badge ind">위탁학생</span>' : ''}</td>
+                <td class="right">${indOn ? indBtn(x) : ''} ${spBtns(x)} ${locked ? '<span class="muted sm">확정됨</span>' : `
+                  ${x.convenience ? `<button class="btn ghost xs" data-act="roster-restore" data-key="${h(x.key)}">편의반 해제</button>` : ''}
                   <button class="btn ghost xs danger-text" data-act="roster-del" data-key="${h(x.key)}">삭제</button>`}
                 </td>
               </tr>`).join('')}
             </tbody>
           </table>
         </div>
-        <p class="hint">편의반: 편의제공 대상 학생이 별도 고사실에서 응시할 때 사용합니다. 학생 삭제: 시험을 보지 않는 학생을 명단에서 뺍니다.${indOn ? ` 위탁학생: 위탁 교육 기관에서 수업을 받는 학생을 표시하면 출력물에 드러나고, 9. 응시현황에서 담임 연락을 확인합니다. 표시는 학번·이름으로 기억해 다음 시험에도 그대로 남습니다.` : ''}</p>`;
+        <p class="hint">별도 고사실: 통합반·시간 연장 등 따로 시험을 보는 학생을 [별도 1실]·[별도 2실]로 미리 정합니다. 모든 시험·교시 지정·추가 시간은 8. 별도 고사실에서 고칩니다. 학생 삭제: 시험을 보지 않는 학생을 명단에서 뺍니다.${indOn ? ` 위탁학생: 위탁 교육 기관에서 수업을 받는 학생을 표시하면 출력물에 드러나고, 9. 응시현황에서 담임 연락을 확인합니다. 표시는 학번·이름으로 기억해 다음 시험에도 그대로 남습니다.` : ''}</p>`;
     },
     actions: {
       'load-sample'(el) { const g = +el.dataset.g || 1; importAoa(Sample.sampleAoa(g), `샘플_학생편성현황_${g}학년.xlsx`); },
@@ -245,6 +248,12 @@
         if (await U.confirm(`【 ${x.ban} ${x.num}번 ${x.name} 】 학생을 편의반으로 이동할까요?\n\n모든 과목의 강의실이 '편의반'으로 바뀌어 별도 고사실에서 응시합니다.`)) S.moveToConvenience(x.key);
       },
       'roster-restore'(el) { S.restoreRoom(el.dataset.key); },
+      'roster-sp'(el) {
+        const room = +el.dataset.room, key = el.dataset.key;
+        S.setSpecialStudent(key, room || null);
+        const x = S.rosterStudents().find((y) => y.key === key);
+        U.toast(room ? `${x.ban} ${x.num}번 ${x.name} → ${S.specialRoom(room).name} (모든 시험)` : `${x.ban} ${x.num}번 ${x.name} 별도 고사실 지정 해제`, 'ok');
+      },
       'roster-ind'(el) {
         const x = S.rosterStudents().find((s) => s.key === el.dataset.key); if (!x) return;
         const on = !S.isIndustry(x);

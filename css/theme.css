@@ -670,3 +670,36 @@ body[data-grade="3"] .page { --p-accent: #9b1c1c; }
 /* 10-9 확인 체크 칸 · 아래 안내 */
 .page.indpage .ptbl.ind-sign td.ind-chk { font-size: 18pt; line-height: 1; color: #1f2937; }
 .page.indpage .ind-foot { margin-top: 3mm; border-top: 0; color: var(--p-accent); font-weight: 700; font-size: 10.5pt; }
+
+/* 1단계: 별도 고사실 미리 지정 */
+.btn.sp-pre { padding: 2px 8px; }
+.btn.sp-pre.on { background: #b91c1c; border-color: #b91c1c; color: #fff; }
+.badge.sp { background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3; font-weight: 800; }
+/* 8단계: 한 줄 표 */
+.sp-board { padding: 16px 18px; }
+.sp-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 8px; }
+.sp-top .sp-search { width: 260px; border-color: #b91c1c; border-radius: 10px; }
+.sp-rooms { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.sp-roomchip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fafafa; font-size: 12.5px; color: #475569; }
+.sp-roomchip .sp-name { width: 110px; }
+.sp-roomchip b { color: #b91c1c; }
+.sp-wrap { max-height: 62vh; }
+.sp-tbl th { background: #f8fafc; }
+.sp-tbl td { vertical-align: middle; padding-top: 8px; padding-bottom: 8px; }
+.sp-tbl tr.on td { background: #fff5f5; }
+.sp-tbl .sp-who .ban { color: #b91c1c; font-weight: 800; }
+.sp-seg { display: inline-flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+.sp-seg-btn { border: 0; border-left: 1px solid #e5e7eb; background: #fff; padding: 5px 10px; font-size: 12.5px; font-weight: 700; color: #374151; cursor: pointer; white-space: nowrap; }
+.sp-seg-btn:first-child { border-left: 0; }
+.sp-seg-btn.on { background: #9b1c1c; color: #fff; }
+.sp-seg-btn:not(.on):hover { background: #fff1f1; }
+.sp-room-sel { width: 70px; }
+.sp-place { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.sp-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.sp-chip { border: 1px solid #d1d5db; background: #fff; border-radius: 7px; padding: 3px 8px; font-size: 12px; font-weight: 700; color: #374151; cursor: pointer; }
+.sp-chip.on { background: #9b1c1c; border-color: #9b1c1c; color: #fff; }
+.sp-chip:disabled { opacity: .35; cursor: not-allowed; }
+.sp-need { color: #b91c1c; font-size: 12.5px; font-weight: 700; }
+.sp-where { font-size: 13px; }
+.sp-place .sp-ext { font-size: 12.5px; color: #475569; white-space: nowrap; }
+.sp-place .sp-ext .input { width: 56px; margin: 0 3px; }
