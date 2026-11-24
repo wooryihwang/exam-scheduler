@@ -323,4 +323,18 @@ t('저장 기록 정리: 자동 저장 솎아 내기와 100MB 제한', () => {
   assert.deepStrictEqual(C.pruneHistory([{ id: 'only', project: 'p', time: 1, kind: 'auto', size: 999 }], 2, 10), []);
 });
 
+t('고사 명칭: 컴퓨터 날짜로 중간·기말고사', () => {
+  const at = (y, m) => C.examTitleFor(new Date(y, m - 1, 15), 3);
+  assert.strictEqual(at(2026, 3), '2026학년도 3학년 1학기 중간고사');
+  assert.strictEqual(at(2026, 5), '2026학년도 3학년 1학기 중간고사');
+  assert.strictEqual(at(2026, 6), '2026학년도 3학년 1학기 기말고사');
+  assert.strictEqual(at(2026, 7), '2026학년도 3학년 1학기 기말고사');
+  assert.strictEqual(at(2026, 8), '2026학년도 3학년 2학기 중간고사');
+  assert.strictEqual(at(2026, 10), '2026학년도 3학년 2학기 중간고사');
+  assert.strictEqual(at(2026, 11), '2026학년도 3학년 2학기 기말고사');
+  assert.strictEqual(at(2026, 12), '2026학년도 3학년 2학기 기말고사');
+  assert.strictEqual(at(2027, 1), '2026학년도 3학년 2학기 기말고사');
+  assert.strictEqual(C.examTitleFor(new Date(2026, 3, 1), 0), '2026학년도 1학기 중간고사');
+});
+
 console.log(`\n${pass}개 테스트 통과`);

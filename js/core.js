@@ -710,6 +710,18 @@
     return [...del];
   }
 
+  /**
+   * 날짜로 정하는 고사 명칭: 3~5월 1학기 중간고사, 6~7월 1학기 기말고사, 8~10월 2학기 중간고사,
+   * 11~12월 2학기 기말고사, 1~2월은 전 학년도 2학기 기말고사. → '2026학년도 3학년 2학기 기말고사'
+   */
+  function examTitleFor(date, grade) {
+    const d = date instanceof Date ? date : new Date(date);
+    const m = d.getMonth() + 1, y = d.getFullYear();
+    const year = m <= 2 ? y - 1 : y;
+    const [term, kind] = m >= 3 && m <= 5 ? [1, '중간고사'] : m >= 6 && m <= 7 ? [1, '기말고사'] : m >= 8 && m <= 10 ? [2, '중간고사'] : [2, '기말고사'];
+    return `${year}학년도 ${grade ? `${grade}학년 ` : ''}${term}학기 ${kind}`;
+  }
+
   /** 교실 번호 목록을 띄워진 공간 기준으로 묶음(연속한 교실)으로 나눈다 */
   function roomSegments(idx, gaps) {
     const segs = [];
@@ -1311,7 +1323,7 @@
     buildStudents, subjectStudentSets, canSameTime, findSameTimeCombos,
     ttCell, remainingSubjects, duplicateSubjects, candidateSubjects, dayDistribution, cellStatus, validateTimetable, autoTimetable,
     subjectBanMap, examSlots, studySlots, placeSlots, slotInfo, parseCell, waitCell, homeCell, homeSize, moreCell, VOID_CELL, slotPlacementStatus, slotRoster, studentIndex, unplacedHomes, balanceMoves, placementIssues, unplacedBans, classNoOfRoom,
-    autoPlaceSlot, fitWaits, roomsApart, roomSegments, pruneHistory, HISTORY_MAX_BYTES, canUseExtra, buildSeating,
+    autoPlaceSlot, fitWaits, roomsApart, roomSegments, pruneHistory, examTitleFor, HISTORY_MAX_BYTES, canUseExtra, buildSeating,
     assignSeatsInOrder, assignSeatsRandom, validateSeating, seatGrid,
     isProgramWorkbook, readProgram, stateFromProgram, seatKey, toISODate,
     holidayReason, nextSchoolDays, hasHolidayTable,

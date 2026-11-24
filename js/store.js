@@ -392,9 +392,11 @@
       }
       return [...m.values()].sort((a, b) => C.cmp(a.ban, b.ban) || a.num - b.num);
     }),
+    /** 기본 고사 명칭: 이 컴퓨터의 오늘 날짜로 정한다 (고쳐 쓴 명칭이 있으면 그것을 씀) */
     defaultTitle() {
       const r = state.rows[0];
-      return r ? `${r.학년도}학년도 ${C.val(r.학년)}학년 ${r.학기}학기 지필평가` : '지필평가';
+      const g = (r && C.val(r.학년)) || S.currentGrade();
+      return C.examTitleFor(new Date(), g);
     },
     title() { return state.title || S.defaultTitle(); },
 

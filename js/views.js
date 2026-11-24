@@ -395,8 +395,8 @@
           <div class="card">
             <h3>1. 고사 정보</h3>
             <div class="form-row"><label>학년</label><div class="static">${grade}학년</div></div>
-            <div class="form-row"><label>고사 명칭</label><input class="input" data-change="title" value="${h(s.title)}" placeholder="${h(S.defaultTitle())}"></div>
-            <p class="hint">출력물 제목: 「${h(S.title())} 시험시간표」</p>
+            <div class="form-row"><label>고사 명칭</label><input class="input" data-change="title" value="${h(S.title())}" placeholder="${h(S.defaultTitle())}"></div>
+            <p class="hint">${s.title ? `직접 고쳐 쓴 명칭입니다. <button class="btn text xs" data-act="title-auto" title="오늘 날짜에 맞춘 명칭(${h(S.defaultTitle())})으로 되돌립니다">↺ 날짜에 맞춘 이름으로</button>` : `이 컴퓨터의 오늘 날짜(${new Date().getMonth() + 1}월)에 맞춰 자동으로 정했습니다. 고쳐 쓰면 그대로 저장됩니다.`} · 출력물 제목: 「${h(S.title())} 시험시간표」</p>
             <div class="card-head mt">
               <h3>2. 고사 시행 일자</h3>
               <div class="seg" role="group" aria-label="시험 기간">
@@ -525,11 +525,12 @@
         U.toast(parts.length ? `학반을 다시 읽었습니다. (${parts.join(' / ')})` : '학반 목록이 학생편성현황과 같습니다.', 'ok');
       },
       async 'room-del'(el) { const r = st().rooms[+el.dataset.i]; if (await U.confirm(`'${r.name || r.ban}' 행을 삭제할까요?`)) S.removeRoom(+el.dataset.i); },
+      'title-auto'() { S.set('title', ''); U.toast(`고사 명칭을 「${S.defaultTitle()}」(으)로 되돌렸습니다.`, 'ok'); },
       'room-up'(el) { S.moveRoom(+el.dataset.i, -1); },
       'room-down'(el) { S.moveRoom(+el.dataset.i, 1); },
     },
     change: {
-      title(el) { S.set('title', el.value.trim()); },
+      title(el) { const v = el.value.trim(); S.set('title', v === S.defaultTitle() ? '' : v); },
       school(el) { S.setSchool(el.value); U.toast('학교 이름을 저장하였습니다.', 'ok'); },
       date(el) { S.setDate(+el.dataset.i, el.value); },
       time(el) { S.setTime(el.dataset.k, el.value.trim()); },
