@@ -138,7 +138,7 @@
       const locked = s.confirmed.roster;
       const conv = list.filter((x) => x.convenience).length;
       const indN = list.filter((x) => S.isIndustry(x)).length;
-      const indBtn = (x) => { const on = S.isIndustry(x); return `<button class="btn ghost xs ind-btn ${on ? 'on' : ''}" data-act="roster-ind" data-key="${h(x.key)}" title="${on ? '산업학교 표시를 지웁니다' : '산업학교(위탁) 수업을 받는 학생으로 표시합니다. 출력물에 표시되고 응시현황에서 담임 연락을 확인합니다.'}">${on ? '산업학교 해제' : '산업학교'}</button>`; };
+      const indBtn = (x) => { const on = S.isIndustry(x); return `<button class="btn ghost xs ind-btn ${on ? 'on' : ''}" data-act="roster-ind" data-key="${h(x.key)}" title="${on ? '위탁학생 표시를 지웁니다' : '위탁 교육 기관에서 수업을 받는 위탁학생으로 표시합니다. 출력물에 표시되고 응시현황에서 담임 연락을 확인합니다.'}">${on ? '위탁학생 해제' : '위탁학생'}</button>`; };
       return head +
         banner(locked ? 'ok' : 'info', locked ? '학생편성현황을 확정하였습니다. <b>2. 기초정보</b>에서 고사 일자·시간과 고사실을 확인하세요.' : '미확정 상태입니다. 학생 명단을 확인한 뒤 <b>학생편성현황 확정</b>을 누르세요.') +
         `<div class="stats">
@@ -147,7 +147,7 @@
           ${stat('수강 내역', s.rows.length + '건')}
           ${stat('개설 과목', new Set(s.rows.map((x) => x.과목)).size + '과목')}
           ${stat('편의반', conv + '명')}
-          ${stat('산업학교', indN + '명', '시험 연락 확인 대상')}
+          ${stat('위탁학생', indN + '명', '시험 연락 확인 대상')}
         </div>
         <div class="toolbar">
           ${searchBox('roster-q', '반·번호·이름 검색', ui.rosterQ, 'roster-tbody')}
@@ -156,13 +156,13 @@
         </div>
         <div class="table-wrap tall">
           <table class="tbl">
-            <thead><tr><th>반</th><th>번호</th><th>성명</th><th>수강 과목 수</th><th>고사실</th><th class="right" title="산업학교 표시 · 편의반 이동 · 학생 삭제 (편의반·삭제는 확정 전에만)">관리</th></tr></thead>
+            <thead><tr><th>반</th><th>번호</th><th>성명</th><th>수강 과목 수</th><th>고사실</th><th class="right" title="위탁학생 표시 · 편의반 이동 · 학생 삭제 (편의반·삭제는 확정 전에만)">관리</th></tr></thead>
             <tbody id="roster-tbody">${shown.map((x) => `
               <tr class="${S.isIndustry(x) ? 'ind' : ''}" data-q="${h(`${x.ban} ${x.num} ${x.name}`)}">
                 <td>${h(x.ban)}</td><td>${x.num}</td>
                 <td><button class="link" data-act="roster-detail" data-key="${h(x.key)}">${h(x.name)}</button></td>
                 <td>${x.count}</td>
-                <td>${x.convenience ? '<span class="badge warn">편의반</span>' : '<span class="muted">소속 반</span>'}${S.isIndustry(x) ? ' <span class="badge ind">산업학교</span>' : ''}</td>
+                <td>${x.convenience ? '<span class="badge warn">편의반</span>' : '<span class="muted">소속 반</span>'}${S.isIndustry(x) ? ' <span class="badge ind">위탁학생</span>' : ''}</td>
                 <td class="right">${indBtn(x)} ${locked ? '<span class="muted sm">확정됨</span>' : `
                   ${x.convenience ? `<button class="btn ghost xs" data-act="roster-restore" data-key="${h(x.key)}">편의반 해제</button>` : `<button class="btn ghost xs" data-act="roster-conv" data-key="${h(x.key)}">편의반 이동</button>`}
                   <button class="btn ghost xs danger-text" data-act="roster-del" data-key="${h(x.key)}">삭제</button>`}
@@ -171,7 +171,7 @@
             </tbody>
           </table>
         </div>
-        <p class="hint">편의반: 편의제공 대상 학생이 별도 고사실에서 응시할 때 사용합니다. 학생 삭제: 시험을 보지 않는 학생을 명단에서 뺍니다. 산업학교: 산업학교(위탁)에서 수업을 받는 학생을 표시하면 출력물에 드러나고, 9. 응시현황에서 담임 연락을 확인합니다. 표시는 학번·이름으로 기억해 다음 시험에도 그대로 남습니다.</p>`;
+        <p class="hint">편의반: 편의제공 대상 학생이 별도 고사실에서 응시할 때 사용합니다. 학생 삭제: 시험을 보지 않는 학생을 명단에서 뺍니다. 위탁학생: 위탁 교육 기관에서 수업을 받는 학생을 표시하면 출력물에 드러나고, 9. 응시현황에서 담임 연락을 확인합니다. 표시는 학번·이름으로 기억해 다음 시험에도 그대로 남습니다.</p>`;
     },
     actions: {
       'load-sample'(el) { const g = +el.dataset.g || 1; importAoa(Sample.sampleAoa(g), `샘플_학생편성현황_${g}학년.xlsx`); },
@@ -248,7 +248,7 @@
         const x = S.rosterStudents().find((s) => s.key === el.dataset.key); if (!x) return;
         const on = !S.isIndustry(x);
         S.setIndustry(x, on);
-        U.toast(`${x.ban} ${x.num}번 ${x.name}: ${on ? '산업학교 학생으로 표시했습니다.' : '산업학교 표시를 지웠습니다.'}`, 'ok');
+        U.toast(`${x.ban} ${x.num}번 ${x.name}: ${on ? '위탁학생으로 표시했습니다.' : '위탁학생 표시를 지웠습니다.'}`, 'ok');
       },
       'roster-detail'(el) {
         const rows = st().rows.filter((x) => C.studentKey(x.반, x.번호) === el.dataset.key);
@@ -1423,10 +1423,10 @@
         const un = S.industryUncontacted();
         if (un.length) {
           const v = await U.modal({
-            title: '산업학교 학생 연락 확인',
-            body: `<p>담임 선생님 연락이 확인되지 않은 산업학교 학생이 <b class="danger-text">${un.length}명</b> 있습니다. 연락을 못 받으면 시험을 놓칠 수 있습니다.</p>
+            title: '위탁학생 연락 확인',
+            body: `<p>담임 선생님 연락이 확인되지 않은 위탁학생이 <b class="danger-text">${un.length}명</b> 있습니다. 연락을 못 받으면 시험을 놓칠 수 있습니다.</p>
               <ul class="hint-list">${un.map((x) => `<li>${h(x.ban)} ${x.num}번 <b>${h(x.name)}</b></li>`).join('')}</ul>
-              <p class="hint">연락한 뒤 아래 표의 <b>연락</b> 칸을 체크하세요. [10-9 산업학교 학생]에서 안내·확인표를 인쇄해 담임 선생님께 드릴 수 있습니다.</p>`,
+              <p class="hint">연락한 뒤 아래 표의 <b>연락</b> 칸을 체크하세요. [10-9 위탁학생]에서 안내·확인표를 인쇄해 담임 선생님께 드릴 수 있습니다.</p>`,
             buttons: [{ label: '돌아가서 확인', value: null, cls: 'primary' }, { label: '그래도 확정', value: 'ok', cls: 'danger-text ghost' }],
           });
           if (v !== 'ok') return;
@@ -1446,7 +1446,7 @@
     },
   };
 
-  /** 9단계: 산업학교 학생 담임 연락 확인 카드 */
+  /** 9단계: 위탁학생 담임 연락 확인 카드 */
   function industryCard(s) {
     const list = S.industryStudents();
     if (!list.length) return '';
@@ -1458,8 +1458,8 @@
       const c = S.industryContact(x.key);
       return `<tr class="${c ? '' : 'todo'}"><td class="chk-cell"><input type="checkbox" data-change="ind-contact" data-key="${h(x.key)}" ${c ? 'checked' : ''} title="담임 선생님이 시험 날짜·고사실을 알렸으면 체크"></td><td>${h(x.ban)}</td><td>${x.num}</td><td><b>${h(x.name)}</b></td><td>${mine.length}과목</td><td>${days.map((d) => `${d}일차<small class="muted">(${h(U.fmtDateShort(s.dates[d - 1]))})</small>`).join(', ') || '-'}</td><td class="muted sm">${c ? fmt(c.at) : '<span class="danger-text">미확인</span>'}</td></tr>`;
     }).join('');
-    return `<div class="card ind-card"><div class="card-head"><h3>산업학교 학생 연락 확인 <span class="sel-badge ${done === list.length ? 'ok' : ''}">${done}/${list.length}명 완료</span></h3>
-      <span class="muted sm">담임 선생님이 시험 날짜·고사실을 알렸으면 체크하세요. 안내·확인표는 [10-9 산업학교 학생]에서 인쇄합니다.</span></div>
+    return `<div class="card ind-card"><div class="card-head"><h3>위탁학생 연락 확인 <span class="sel-badge ${done === list.length ? 'ok' : ''}">${done}/${list.length}명 완료</span></h3>
+      <span class="muted sm">담임 선생님이 시험 날짜·고사실을 알렸으면 체크하세요. 안내·확인표는 [10-9 위탁학생]에서 인쇄합니다.</span></div>
       <table class="tbl compact ind-tbl"><thead><tr><th>연락</th><th>반</th><th>번호</th><th>성명</th><th>시험</th><th>시험 날짜</th><th>확인 시각</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
 

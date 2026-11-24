@@ -39,7 +39,7 @@
     out: { seatRows: 0, seatOrder: 'col', seatList: true, slipNoteOn: true, slipNote: DEFAULT_SLIP_NOTE, slipSeat: true, labelStyle: 'big', paper: 'A4', secLabel: 'num' },
     plLocks: [],          // 학생 배치에서 잠근 교시 (자동 배치가 바꾸지 않음)
     subjectCodes: {},
-    industryContact: {},  // 산업학교 학생 담임 연락 확인: { 학생key: { at: 시각 } } (시험마다 새로)
+    industryContact: {},  // 위탁학생 담임 연락 확인: { 학생key: { at: 시각 } } (시험마다 새로)
     notices: [],
     // 자동 배치: 'class' 학반 교실 우선(권장) | 'original' 원본 엑셀과 동일
     // 대기 배정: 'class' 반별 우선(권장)      | 'original' 원본 엑셀과 동일
@@ -894,7 +894,7 @@
     setTheme(v) { index.theme = v; writeJSON(INDEX_KEY, index); commit(); },
     setSubjectCode(s, v) { state.subjectCodes[s] = v; commit(); },
     resetAll() { state = blank(); commit(); },
-    // ------------------------------------------------ 산업학교(위탁) 학생
+    // ------------------------------------------------ 위탁학생
     // 학번 + 이름으로 기억한다(모든 학년·시험 공통). 다음 시험에 편성 파일을 새로 불러와도 다시 표시된다.
     industryList: () => (Array.isArray(index.industry) ? index.industry : []),
     industryNo: (x) => C.studentNo(x.grade || S.currentGrade(), x.ban, x.num),
@@ -909,7 +909,7 @@
       if (on) list.push({ no, name: x.name });
       index.industry = list; writeJSON(INDEX_KEY, index); commit();
     },
-    /** 평가 과목이 있는 산업학교 학생 (반·번호 순) */
+    /** 평가 과목이 있는 위탁학생 (반·번호 순) */
     industryStudents: () => S.students().filter((x) => S.isIndustry(x)),
     industryContact: (key) => (state.industryContact || {})[key] || null,
     setIndustryContact(key, on) {

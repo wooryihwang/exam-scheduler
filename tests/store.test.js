@@ -201,7 +201,7 @@ const resetTest = () => t('학년별 초기화 · 전체 초기화', () => {
   assert.strictEqual(S.projects().map((p) => p.name).join(','), names);
 });
 
-const industryTest = () => t('산업학교 학생: 표시 기억 · 연락 확인', () => {
+const industryTest = () => t('위탁학생: 표시 기억 · 연락 확인', () => {
   S.newProject('산업'); S.importRows(rows, 'i.xlsx');
   const x = S.rosterStudents()[0];
   S.setIndustry(x, true);
