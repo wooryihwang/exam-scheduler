@@ -126,17 +126,22 @@ t('학반별 고사장 + 학생 강제 이동', () => {
   assert.deepStrictEqual(res.errors, []);
   assert.strictEqual(res.seating.find((x) => x.slot === '1_3' && x.ban === who.ban && x.num === who.num).roomIndex, 1);
 });
-t('정원 맞추기: 분반(학급)은 교실 정원보다 커도 나누지 않음 · 다른 교실로 옮기지 않음', () => {
+t('좌석 맞추기: 분반은 나누지 않고 좌석이 충분한 교실로 통째로', () => {
   const sl = C.examSlots(tt).find((x) => x.key === '1_3');
   const small = rooms.map((r) => ({ ...r }));
   small[0].cap = 25; // 1반 교실(29명)을 25석으로
-  small[1].cap = 40; // 2반 교실은 여유
   const cells = small.map((r) => (C.isClassRoom(r) ? C.homeCell('공통국어1(4)', r.ban) : ''));
   const ctx = { rooms: small, sbMap, students, idx: C.studentIndex(rows), waitMode: 'class' };
+  // 인원 맞추기는 다른 분반 교실로 학생을 나누지 않음 (추가 고사장이 없으면 초과로 남김)
   const b = C.balanceMoves(ctx, sl, cells);
-  assert.ok(b.moved === 0 && !b.unresolved.length, JSON.stringify(b));
+  assert.ok(b.moved === 0 && b.unresolved.length === 1, JSON.stringify(b));
+  // 좌석 맞추기: 1반 학급을 좌석이 충분한 빈 교실(특별실)로 통째로 옮김
   const info = C.slotInfo(sl, students, subjectClasses);
-  assert.strictEqual(C.slotPlacementStatus(sl, cells, info, sbMap, small).warnings.length, 0, '자기 분반만 있으면 정원 초과로 보지 않음');
+  const fitted = C.refitSections(cells, small, sbMap, info, null);
+  const secs = (cs) => cs.filter((v) => C.parseCell(v).type === 'home').sort();
+  assert.deepStrictEqual(secs(fitted), secs(cells), '분반 수·종류는 그대로');
+  fitted.forEach((v, i) => { if (C.parseCell(v).type === 'home') assert.ok(C.homeSize(info, C.parseCell(v).subject, C.parseCell(v).ban) <= (Number(small[i].cap) || Infinity), `${small[i].name} 좌석 초과`); });
+  assert.strictEqual(C.slotPlacementStatus(sl, fitted, info, sbMap, small).warnings.length, 0);
 });
 t('추가 고사장: 정원 초과 학생을 받아 옴', () => {
   const sl = C.examSlots(tt).find((x) => x.key === '1_3');

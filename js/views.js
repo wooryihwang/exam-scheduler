@@ -940,7 +940,7 @@
             const realOf = (base) => (counts && counts[i] != null ? counts[i] : base);
             if (c.type === 'exam') {
               const x = sb.get(c.key);
-              const over = x && capN > 0 && realOf(x.stuCount) > (C.cellCap(rooms[i], v, sb, info, cells) || capN);
+              const over = x && capN > 0 && realOf(x.stuCount) > capN;
               cls = `exam ${over ? 'over' : ''} ${x && slot.subjects.includes(x.subject) ? '' : 'bad'}`;
               inner = x ? `<div class="c-subj">${h(C.onlySubject(x.subject))}</div><div class="c-ban">${S.secName(x) && st().out.secLabel !== 'neis' ? `${h(S.secName(x))} · ` : ''}${h(C.roomLabel(x.room))}</div>${cnt(x.stuCount)}` : `<div class="c-subj">${h(v)}</div><div class="c-ban">오류</div>`;
             } else if (c.type === 'more') {
@@ -948,7 +948,7 @@
               inner = `<div class="c-subj">${h(C.onlySubject(c.subject))}</div><div class="c-ban">추가 고사장</div>${cnt(0)}`;
             } else if (c.type === 'home') {
               const base = C.homeSize(info, c.subject, c.ban);
-              cls = `exam home ${capN > 0 && realOf(base) > (C.cellCap(rooms[i], v, sb, info, cells) || capN) ? 'over' : ''}`;
+              cls = `exam home ${capN > 0 && realOf(base) > capN ? 'over' : ''}`;
               inner = `<div class="c-subj">${h(C.onlySubject(c.subject))}</div><div class="c-ban">${h(c.ban)} 학급 전체</div>${cnt(base)}`;
             } else if (c.type === 'wait') {
               const over = capN > 0 && realOf(c.count) > capN;

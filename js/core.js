@@ -431,17 +431,49 @@
    * 칸의 정원: 시험실은 그 분반(학급 전체) 인원까지는 정원 안으로 본다 — 분반은 나누지 않고 한 교실에서 본다.
    * (교실 수용인원보다 큰 분반은 책상을 더 놓는 것으로 보고, 다른 분반 교실로 학생을 옮기지 않음)
    */
-  function cellCap(room, v, sbMap, info, cells) {
-    const cap = Number(room && room.cap) || 0;
-    if (!cap) return 0;
-    const c = parseCell(v);
-    // 그 과목에 '추가 고사장'을 정해 두었으면 넘치는 학생을 그리로 옮기므로 교실 정원 그대로
-    if (cells && (c.type === 'exam' || c.type === 'home')) { const subj = c.type === 'exam' ? (sbMap && sbMap.get(c.key) || {}).subject : c.subject; if (hasMoreFor(cells, subj)) return cap; }
-    if (c.type === 'exam') { const sb = sbMap && sbMap.get(c.key); return sb ? Math.max(cap, sb.stuCount) : cap; }
-    if (c.type === 'home') return info ? Math.max(cap, homeSize(info, c.subject, c.ban) || 0) : cap;
-    return cap;
+  // eslint-disable-next-line no-unused-vars
+  function cellCap(room, v, sbMap, info, cells) { return Number(room && room.cap) || 0; }
+
+  /**
+   * 좌석 맞추기: 좌석 수보다 큰 분반(학급)이 있으면 분반을 나누지 않고 좌석이 충분한 교실로 통째로 옮긴다.
+   * 후보 순서: 지금 시험실끼리 맞바꾸기 → 빈 교실(완충)·빈 칸 → 학반 교실(앞부터) → 특별실(작은 것부터) → 자습실.
+   * 자습실을 쓰면 그 자리는 비우고 자습 인원은 fitWaits 가 다른 교실로 다시 나눈다.
+   * 맞는 교실이 하나도 없으면 그대로 두어 '정원 초과'로 알린다. → 새 cells
+   */
+  function refitSections(cellsIn, rooms, sbMap, info, fixed) {
+    const cells = cellsIn.slice();
+    const cap = (i) => Number(rooms[i] && rooms[i].cap) || Infinity;
+    const sizeOf = (v) => { const c = parseCell(v); if (c.type === 'exam') { const sb = sbMap.get(c.key); return sb ? sb.stuCount : 0; } if (c.type === 'home') return homeSize(info, c.subject, c.ban) || 0; return 0; };
+    const isSec = (v) => { const t = parseCell(v).type; return t === 'exam' || t === 'home'; };
+    const free = (i) => !(fixed && fixed.has(i)) && isRoomUsable(rooms[i]);
+    const secPos = cells.map((v, i) => (isSec(v) && free(i) ? i : -1)).filter((i) => i >= 0);
+    if (!secPos.some((i) => sizeOf(cells[i]) > cap(i))) return cells;
+    const secs = secPos.map((i) => ({ v: cells[i], n: sizeOf(cells[i]), from: i })).sort((a, b) => b.n - a.n || a.from - b.from);
+    const kind = (i) => { const t = parseCell(cells[i]).type; return t === 'void' || t === 'empty' ? 1 : t === 'wait' ? 3 : 9; };
+    const extra = rooms.map((r, i) => (free(i) && !secPos.includes(i) && kind(i) < 9 ? i : -1)).filter((i) => i >= 0)
+      .sort((a, b) => kind(a) - kind(b) || (isClassRoom(rooms[b]) - isClassRoom(rooms[a])) || (isClassRoom(rooms[a]) ? a - b : cap(a) - cap(b) || a - b));
+    const taken = new Set(), place = new Map();
+    for (const s of secs) {
+      // 지금 시험실 가운데 들어가는 가장 작은 곳 → 없으면 다른 교실 가운데 앞선 순서
+      const inExam = secPos.filter((i) => !taken.has(i) && cap(i) >= s.n).sort((a, b) => cap(a) - cap(b) || a - b)[0];
+      const other = inExam == null ? extra.find((i) => !taken.has(i) && cap(i) >= s.n) : undefined;
+      const to = inExam != null ? inExam : other;
+      if (to == null) continue;
+      taken.add(to); place.set(s, to);
+    }
+    // 어디에도 다 들어가지 않는 분반은 남은 시험실·빈 칸 가운데 좌석이 가장 많은 곳에 (초과를 가장 작게, '정원 초과'로 알림)
+    for (const s of secs) {
+      if (place.has(s)) continue;
+      const pool = [...secPos, ...extra.filter((i) => parseCell(cells[i]).type === 'empty')].filter((i) => !taken.has(i));
+      const to = pool.sort((a, b) => cap(b) - cap(a) || (b === s.from) - (a === s.from) || a - b)[0];
+      if (to == null) return cellsIn.slice(); // 자리가 모자라면 바꾸지 않음
+      taken.add(to); place.set(s, to);
+    }
+    secPos.forEach((i) => { cells[i] = ''; });
+    for (const [s, to] of place) cells[to] = s.v;
+    return cells;
   }
-  const hasMoreFor = (cells, subject) => !!subject && cells.some((x) => { const p = parseCell(x); return p.type === 'more' && p.subject === subject; });
+
   function slotPlacementStatus(slot, cells, info, sbMap, rooms, counts) {
     let bans = 0, exam = 0, wait = 0; const problems = [], warnings = [];
     const seen = new Set(), sectionSubj = new Set(), homeSubj = new Set();
@@ -549,7 +581,9 @@
     }
     // 이미 있는 대기실의 빈자리를 먼저 채운 뒤(새 교실은 열지 않음) 자동 배치, 마지막에 자습 인원 합계를 맞춤
     const pre = cellsIn.some((v) => parseCell(v).type === 'wait') ? fitWaits(cellsIn, ctx.rooms, ctx.info, false, fixed).cells : cellsIn;
-    return fitWaits(autoPlaceBy(slot, pre, ctx, useExtra, mode), ctx.rooms, ctx.info, true, fixed).cells;
+    const by = autoPlaceBy(slot, pre, ctx, useExtra, mode);
+    const placed = mode === 'original' ? by : refitSections(by, ctx.rooms, ctx.sbMap, ctx.info, fixed); // 원본 방식은 원본 엑셀 그대로
+    return fitWaits(placed, ctx.rooms, ctx.info, true, fixed).cells;
   }
   function autoPlaceBy(slot, cellsIn, ctx, useExtra, mode) {
     if (mode === 'original') return autoPlaceOriginal(slot, cellsIn, ctx, useExtra);
@@ -1002,13 +1036,13 @@
     const { rooms } = ctx;
     const base = slotRoster(ctx, slot, cells, {});
     // 시험실 정원은 그 분반 원래 인원(학생 이동 전) 이상 → 분반을 다른 교실로 나누지 않음
-    const cap = (i) => { const c = Number(rooms[i].cap) || Infinity, r = base.rooms.get(i), t = parseCell(cells[i]).type; return (t === 'exam' || t === 'home') && r && !hasMoreFor(cells, r.subject) ? Math.max(c, r.list.length) : c; };
+    const cap = (i) => Number(rooms[i].cap) || Infinity;
     const groups = new Map(); // 같은 과목 시험실끼리, 자습실끼리. 시험실 정원은 그 분반 인원 이상이라 분반 학생을 다른 교실로 나누지 않음 (잠긴 칸 제외)
     for (const [i, r] of base.rooms) {
       if (ctx.locked && ctx.locked.has(i)) continue;
       const g = r.kind === 'wait' ? 'wait' : 'exam:' + r.subject;
       if (!groups.has(g)) groups.set(g, []);
-      groups.get(g).push({ i, list: r.list.slice() });
+      groups.get(g).push({ i, list: r.list.slice(), kind: r.kind, more: parseCell(cells[i]).type === 'more' });
     }
     const moves = {}, unresolved = [];
     let moved = 0;
@@ -1016,7 +1050,9 @@
       for (;;) {
         const over = list.filter((x) => x.list.length > cap(x.i)).sort((a, b) => (b.list.length - cap(b.i)) - (a.list.length - cap(a.i)))[0];
         if (!over) break;
-        const to = list.filter((x) => x !== over && x.list.length < cap(x.i)).sort((a, b) => (cap(b.i) - b.list.length) - (cap(a.i) - a.list.length) || a.i - b.i)[0];
+        // 시험실의 넘치는 학생은 같은 과목 '추가 고사장'으로만 보낸다 (다른 분반 교실로 나누지 않음). 자습실은 자습실끼리
+        const okTo = (x) => over.kind === 'wait' || x.more;
+        const to = list.filter((x) => x !== over && okTo(x) && x.list.length < cap(x.i)).sort((a, b) => (cap(b.i) - b.list.length) - (cap(a.i) - a.list.length) || a.i - b.i)[0];
         if (!to) { unresolved.push({ i: over.i, over: over.list.length - cap(over.i) }); break; }
         // 받는 교실의 반 학생을 우선, 없으면 명단 뒤쪽 학생
         let k = -1;
@@ -1346,7 +1382,7 @@
     parseNeis, buildBase, buildRooms, mergeRooms, isRoomUsable, isExtraRoom, isClassRoom,
     buildStudents, subjectStudentSets, canSameTime, findSameTimeCombos,
     ttCell, remainingSubjects, duplicateSubjects, candidateSubjects, dayDistribution, cellStatus, validateTimetable, autoTimetable,
-    subjectBanMap, examSlots, studySlots, placeSlots, slotInfo, parseCell, waitCell, homeCell, homeSize, moreCell, VOID_CELL, slotPlacementStatus, cellCap, slotRoster, studentIndex, unplacedHomes, balanceMoves, placementIssues, unplacedBans, classNoOfRoom,
+    subjectBanMap, examSlots, studySlots, placeSlots, slotInfo, parseCell, waitCell, homeCell, homeSize, moreCell, VOID_CELL, slotPlacementStatus, cellCap, refitSections, slotRoster, studentIndex, unplacedHomes, balanceMoves, placementIssues, unplacedBans, classNoOfRoom,
     autoPlaceSlot, fitWaits, roomsApart, roomSegments, pruneHistory, examTitleFor, HISTORY_MAX_BYTES, canUseExtra, buildSeating,
     assignSeatsInOrder, assignSeatsRandom, validateSeating, seatGrid,
     isProgramWorkbook, readProgram, stateFromProgram, seatKey, toISODate,
