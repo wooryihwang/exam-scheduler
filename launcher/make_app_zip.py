@@ -15,6 +15,7 @@ OUT = os.path.join(HERE, 'app.zip')
 
 REPLACE = {
     'index.html': [
+        ('<meta property="og:url" content="https://wooryihwang.github.io/exam-scheduler/">', ''),  # 공유 미리보기용 (실행 파일에는 필요 없음)
         ('<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">',
          '<link rel="stylesheet" href="vendor/pretendardvariable.css">'),
         ('<link rel="preconnect" href="https://fonts.googleapis.com">', ''),
