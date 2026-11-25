@@ -511,9 +511,9 @@
     ui.scope = ui.scopes[ui.tab];
     const outBar = `<div class="out-bar">
         <div class="scope-radios" role="radiogroup" aria-label="저장·출력 범위"><span class="scope-label">범위</span>${scopes.slice().reverse().map(([k, l]) => `<label class="scope-radio ${k === ui.scope ? 'on' : ''}"><input type="radio" name="o-scope" value="${k}" data-change="o-scope" ${k === ui.scope ? 'checked' : ''}><span>${h(l)}</span></label>`).join('')}</div>
+        ${printPair(scopes)}
         <button class="btn outline sm" data-act="out-excel" title="표를 엑셀 파일로 저장 (쪽마다 시트 하나)">📊 엑셀 저장</button>
         <button class="btn outline sm" data-act="out-pdf" title="A4 쪽 그대로 PDF 파일로 저장">📄 PDF 저장</button>
-        ${printPair(scopes)}
       </div>`;
     const scopeLabel = (scopes.find(([k]) => k === ui.scope) || scopes[0])[1];
     return { ctrl, preview, printBtns: outBar, scopeLabel };
@@ -724,7 +724,7 @@
       ui.scopeLabel = scopeLabel;
       if (ui.tab === 'label') requestAnimationFrame(fitLabelPreview);
       if (!tabs().some(([k]) => k === ui.tab)) ui.tab = 'all';
-      return `<div class="sticky-group">` + stepHead(10, (TABS.find(([k]) => k === ui.tab) || [])[1] || '인쇄 및 출력물', '고사 운영에 필요한 시간표와 명단을 미리 봅니다. 범위를 고른 뒤 <b>📊 엑셀 저장</b> · <b>📄 PDF 저장</b> · <b>🖨 출력</b> 중 하나를 누르세요.') +
+      return `<div class="sticky-group">` + stepHead(10, (TABS.find(([k]) => k === ui.tab) || [])[1] || '인쇄 및 출력물', '고사 운영에 필요한 시간표와 명단을 미리 봅니다. 범위를 고른 뒤 <b>🖨 출력</b> · <b>📊 엑셀 저장</b> · <b>📄 PDF 저장</b> 중 하나를 누르세요.') +
         `<div class="tabs">${tabs().map(([k, l]) => `<button class="tab ${ui.tab === k ? 'on' : ''}" data-act="o-tab" data-tab="${k}">${h(l)}</button>`).join('')}</div>
         <div class="toolbar">${ctrl}<span class="spacer"></span>${printBtns}</div></div>
         <div class="preview">${previewNote()}${previewPages(preview)}</div>`;
