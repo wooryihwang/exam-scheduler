@@ -440,6 +440,19 @@
    * 자습실을 쓰면 그 자리는 비우고 자습 인원은 fitWaits 가 다른 교실로 다시 나눈다.
    * 맞는 교실이 하나도 없으면 그대로 두어 '정원 초과'로 알린다. → 새 cells
    */
+  /** 넘치는 인원이 작아(교실당 3명 이하) 같은 과목 시험실 빈자리로 다 받을 수 있는가 */
+  function smallOverflow(cells, ctx) {
+    const by = new Map();
+    cells.forEach((v, i) => {
+      const c = parseCell(v); let subj, n;
+      if (c.type === 'exam') { const sb = ctx.sbMap.get(c.key); if (!sb) return; subj = sb.subject; n = sb.stuCount; } else if (c.type === 'home') { subj = c.subject; n = homeSize(ctx.info, c.subject, c.ban) || 0; } else return;
+      const cap = Number(ctx.rooms[i] && ctx.rooms[i].cap) || Infinity;
+      const g = by.get(subj) || { over: 0, spare: 0, big: false };
+      if (n > cap) { g.over += n - cap; if (n - cap > 3) g.big = true; } else if (cap !== Infinity) g.spare += cap - n;
+      by.set(subj, g);
+    });
+    return [...by.values()].every((g) => !g.over || (!g.big && g.over <= g.spare));
+  }
   function refitSections(cellsIn, rooms, sbMap, info, fixed, opt = {}) {
     const cells = cellsIn.slice();
     const cap = (i) => Number(rooms[i] && rooms[i].cap) || Infinity;
@@ -451,7 +464,7 @@
     const secs = secPos.map((i) => ({ v: cells[i], n: sizeOf(cells[i]), from: i })).sort((a, b) => b.n - a.n || a.from - b.from);
     // '빈 교실'로 정해 둔 교실은 쓰지 않음. 자습실은 자동 배치 때만 (인원 맞추기는 빈 칸·시험실끼리만)
     const kind = (i) => { const t = parseCell(cells[i]).type; return t === 'empty' ? 1 : t === 'wait' && opt.useWait !== false ? 3 : 9; };
-    const extra = rooms.map((r, i) => (free(i) && !secPos.includes(i) && kind(i) < 9 ? i : -1)).filter((i) => i >= 0)
+    const extra = opt.swapOnly ? [] : rooms.map((r, i) => (free(i) && !secPos.includes(i) && kind(i) < 9 ? i : -1)).filter((i) => i >= 0)
       .sort((a, b) => kind(a) - kind(b) || (isClassRoom(rooms[b]) - isClassRoom(rooms[a])) || (isClassRoom(rooms[a]) ? a - b : cap(a) - cap(b) || a - b));
     const taken = new Set(), place = new Map();
     for (const s of secs) {
@@ -583,7 +596,13 @@
     // 이미 있는 대기실의 빈자리를 먼저 채운 뒤(새 교실은 열지 않음) 자동 배치, 마지막에 자습 인원 합계를 맞춤
     const pre = cellsIn.some((v) => parseCell(v).type === 'wait') ? fitWaits(cellsIn, ctx.rooms, ctx.info, false, fixed).cells : cellsIn;
     const by = autoPlaceBy(slot, pre, ctx, useExtra, mode);
-    const placed = mode === 'original' ? by : refitSections(by, ctx.rooms, ctx.sbMap, ctx.info, fixed); // 원본 방식은 원본 엑셀 그대로
+    // 좌석 맞추기: 먼저 시험실끼리만 맞바꿈. 넘치는 인원이 적고(교실당 3명 이하) 같은 과목 교실 빈자리로 받을 수 있으면
+    // 분반은 제자리에 두고 인원 맞추기가 몇 명만 옆 교실로 옮김. 아니면 분반째 좌석이 맞는 교실로 옮김. (원본 방식은 원본 엑셀 그대로)
+    let placed = by;
+    if (mode !== 'original') {
+      placed = refitSections(by, ctx.rooms, ctx.sbMap, ctx.info, fixed, { swapOnly: true });
+      if (!smallOverflow(placed, ctx)) placed = refitSections(placed, ctx.rooms, ctx.sbMap, ctx.info, fixed);
+    }
     return fitWaits(placed, ctx.rooms, ctx.info, true, fixed).cells;
   }
   function autoPlaceBy(slot, cellsIn, ctx, useExtra, mode) {
@@ -844,9 +863,11 @@
     const segs = roomSegments(classIdx, gaps);
     if (segs.length < 2 || !pending.length) return null;
     const need = pending.length;
-    const fits = segs.map((seg, si) => ({ seg, si, fr: seg.filter(free) })).filter((x) => {
-      return x.fr.length >= need && !!fitPlan(x.fr, pending, cap);
-    });
+    const all = segs.map((seg, si) => ({ seg, si, fr: seg.filter(free) }));
+    // 분반이 모두 좌석에 맞는 묶음 → 없으면 교실 수와 좌석 합이 충분한 묶음 (넘치는 몇 명은 인원 맞추기가 옆 교실로)
+    const stu = pending.reduce((t, sb) => t + sb.stuCount, 0);
+    let fits = all.filter((x) => x.fr.length >= need && !!fitPlan(x.fr, pending, cap));
+    if (!fits.length) fits = all.filter((x) => x.fr.length >= need && x.fr.map((i) => cap(i) || Infinity).sort((a, b) => b - a).slice(0, need).reduce((t, c) => t + c, 0) >= stu);
     fits.sort((a, b) => a.fr.length - b.fr.length || (back ? b.si - a.si : a.si - b.si));
     return fits[0] || null;
   }
@@ -923,7 +944,13 @@
     const seg = pickSegment(classIdx, ctx.gaps, pending, free, cap, back);
     if (seg) {
       const inner = back ? seg.fr.slice().reverse() : seg.fr.slice();
-      const plan0 = fitPlan(inner, pending, cap);
+      // 좌석에 맞게 짝짓기, 안 되면 큰 분반을 큰 교실에
+      let plan0 = fitPlan(inner, pending, cap);
+      if (!plan0) {
+        plan0 = new Map();
+        const big = pending.slice().sort((a, b) => b.stuCount - a.stuCount), byCap = inner.slice(0, pending.length).sort((a, b) => cap(b) - cap(a) || inner.indexOf(a) - inner.indexOf(b));
+        big.forEach((sb, k) => plan0.set(sb, byCap[k]));
+      }
       const exam = [...plan0.values()].sort((a, b) => inner.indexOf(a) - inner.indexOf(b));
       for (const [sb, i] of plan0) cells[i] = sb.key;
       pending.length = 0;
@@ -1117,9 +1144,8 @@
       for (;;) {
         const over = list.filter((x) => x.list.length > cap(x.i)).sort((a, b) => (b.list.length - cap(b.i)) - (a.list.length - cap(a.i)))[0];
         if (!over) break;
-        // 시험실의 넘치는 학생은 같은 과목 '추가 고사장'으로만 보낸다 (다른 분반 교실로 나누지 않음). 자습실은 자습실끼리
-        const okTo = (x) => over.kind === 'wait' || x.more;
-        const to = list.filter((x) => x !== over && okTo(x) && x.list.length < cap(x.i)).sort((a, b) => (cap(b.i) - b.list.length) - (cap(a.i) - a.list.length) || a.i - b.i)[0];
+        // 넘치는 학생만 같은 과목의 빈자리가 있는 교실로 (분반은 제자리, 가장 가까운 교실 → 빈자리 많은 교실). 자습실은 자습실끼리
+        const to = list.filter((x) => x !== over && x.list.length < cap(x.i)).sort((a, b) => (over.kind === 'wait' ? 0 : Math.abs(a.i - over.i) - Math.abs(b.i - over.i)) || (cap(b.i) - b.list.length) - (cap(a.i) - a.list.length) || a.i - b.i)[0];
         if (!to) { unresolved.push({ i: over.i, over: over.list.length - cap(over.i) }); break; }
         // 받는 교실의 반 학생을 우선, 없으면 명단 뒤쪽 학생
         let k = -1;

@@ -1126,9 +1126,8 @@
     let w = { added: 0, removed: 0, short: 0 };
     if (slot) {
       const info = S.slotInfo(slot), L = S.cellLockSet(slotKey);
-      // 좌석보다 큰 분반은 좌석이 충분한 교실로 통째로 옮긴 뒤 자습 인원을 맞춤
-      const fitted = C.refitSections(S.cells(slotKey), state.rooms, S.sbMap(), info, L, { useWait: false });
-      w = C.fitWaits(fitted, state.rooms, info, true, L); state.placement[slotKey] = w.cells;
+      // 분반은 제자리에 두고(원반 유지) 자습 인원만 맞춘 뒤, 넘치는 학생만 같은 과목의 가까운 교실로 옮김
+      w = C.fitWaits(S.cells(slotKey), state.rooms, info, true, L); state.placement[slotKey] = w.cells;
     }
     const r = rebalance(slotKey);
     commit();

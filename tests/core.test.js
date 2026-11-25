@@ -126,15 +126,18 @@ t('학반별 고사장 + 학생 강제 이동', () => {
   assert.deepStrictEqual(res.errors, []);
   assert.strictEqual(res.seating.find((x) => x.slot === '1_3' && x.ban === who.ban && x.num === who.num).roomIndex, 1);
 });
-t('좌석 맞추기: 분반은 나누지 않고 좌석이 충분한 교실로 통째로', () => {
+t('인원 맞추기·좌석 맞추기: 넘치는 학생만 가까운 같은 과목 교실로 / 자동 배치는 분반째 맞는 교실로', () => {
   const sl = C.examSlots(tt).find((x) => x.key === '1_3');
   const small = rooms.map((r) => ({ ...r }));
   small[0].cap = 25; // 1반 교실(29명)을 25석으로
+  small[1].cap = 40; // 바로 옆 2반 교실은 여유
   const cells = small.map((r) => (C.isClassRoom(r) ? C.homeCell('공통국어1(4)', r.ban) : ''));
   const ctx = { rooms: small, sbMap, students, idx: C.studentIndex(rows), waitMode: 'class' };
-  // 인원 맞추기는 다른 분반 교실로 학생을 나누지 않음 (추가 고사장이 없으면 초과로 남김)
+  // 인원 맞추기: 분반은 제자리, 넘치는 4명만 같은 과목의 가장 가까운 교실(1반 옆 2반)로
   const b = C.balanceMoves(ctx, sl, cells);
-  assert.ok(b.moved === 0 && b.unresolved.length === 1, JSON.stringify(b));
+  assert.ok(b.moved === 4 && !b.unresolved.length, JSON.stringify(b));
+  const near = cells.findIndex((v, i) => i > 0 && C.parseCell(v).type === 'home');
+  assert.ok(Object.values(b.moves).every((i) => i === near), '가장 가까운 같은 과목 교실로 ' + JSON.stringify(b.moves));
   // 좌석 맞추기: 1반 학급을 좌석이 충분한 빈 교실(특별실)로 통째로 옮김
   const info = C.slotInfo(sl, students, subjectClasses);
   const fitted = C.refitSections(cells, small, sbMap, info, null);
