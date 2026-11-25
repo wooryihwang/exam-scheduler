@@ -796,12 +796,55 @@
    * 빈 교실 수 ≥ 시험 분반 수이고, 큰 교실부터 분반 수만큼의 정원 합 ≥ 응시 인원인 묶음 가운데
    * 교실 수가 가장 적은 묶음(같으면 뒤 교실 규칙이면 뒤쪽, 아니면 앞쪽). 맞는 묶음이 없으면 null.
    */
+  /**
+   * 분반들을 교실들에 좌석이 모자라지 않게 짝지을 수 있으면 Map(분반 → 교실), 아니면 null.
+   * 큰 분반부터, 들어가는 교실 가운데 좌석이 가장 적은 곳(같으면 edge 쪽)에 — 이 방법으로 안 되면 어떤 방법으로도 안 됨
+   */
+  function fitPlan(roomList, pending, cap, edgeLast) {
+    if (roomList.length < pending.length) return null;
+    const left = roomList.slice(), plan = new Map();
+    const pos = (i) => roomList.indexOf(i);
+    for (const sb of pending.slice().sort((a, b) => b.stuCount - a.stuCount)) {
+      const ok = left.filter((i) => !(cap(i) > 0) || cap(i) >= sb.stuCount)
+        .sort((a, b) => (cap(a) || Infinity) - (cap(b) || Infinity) || (edgeLast ? pos(b) - pos(a) : pos(a) - pos(b)));
+      if (!ok.length) return null;
+      plan.set(sb, ok[0]); left.splice(left.indexOf(ok[0]), 1);
+    }
+    return plan;
+  }
+  /**
+   * 시험실 묶음 고르기 (띄워진 공간이 없을 때): 이어진 교실 묶음 가운데 모든 분반이 좌석에 맞게 들어가는 첫 묶음.
+   * 뒤 교실 규칙: 뒤 N개 학반 → 거기에 바로 옆 별도실을 하나씩 더함 → (안 되면) 앞 교실 묶음.
+   * 앞 교실 규칙: 앞 N개 학반 → 한 교실씩 늘림 → (안 되면) 뒤 묶음.
+   * → { plan: Map(분반 → 교실), list: 묶음 교실(순서대로), back } 또는 null
+   */
+  function pickWindow(classIdx, extraIdx, pending, free, cap, back) {
+    const n = pending.length;
+    const cls = classIdx.filter(free), ex = extraIdx.filter(free).slice().sort((a, b) => a - b);
+    if (!n || !cls.length) return null;
+    const backWins = [], frontWins = [];
+    if (cls.length >= n) {
+      const tail = cls.slice(-n);
+      backWins.push(tail);
+      for (let k = 1; k <= ex.length; k++) backWins.push([...tail, ...ex.slice(0, k)]);
+    } else backWins.push([...cls, ...ex.slice(0, Math.max(0, n - cls.length))]);
+    for (let L = Math.min(n, cls.length); L <= cls.length; L++) frontWins.push(cls.slice(0, L));
+    const tries = back ? [...backWins.map((w) => [w, true]), ...frontWins.map((w) => [w, false])] : [...frontWins.map((w) => [w, false]), ...backWins.map((w) => [w, true])];
+    for (const [list, isBack] of tries) {
+      // 묶음은 학반 교실이 서로 이어져 있어야 함 (중간에 이미 쓰는 교실이 끼면 안 됨)
+      const ci = list.filter((i) => classIdx.includes(i)).map((i) => classIdx.indexOf(i));
+      if (ci.length && ci[ci.length - 1] - ci[0] !== ci.length - 1) continue;
+      const plan = fitPlan(list, pending, cap, isBack);
+      if (plan) return { plan, list, back: isBack };
+    }
+    return null;
+  }
   function pickSegment(classIdx, gaps, pending, free, cap, back) {
     const segs = roomSegments(classIdx, gaps);
     if (segs.length < 2 || !pending.length) return null;
     const need = pending.length;
     const fits = segs.map((seg, si) => ({ seg, si, fr: seg.filter(free) })).filter((x) => {
-      return x.fr.length >= need;
+      return x.fr.length >= need && !!fitPlan(x.fr, pending, cap);
     });
     fits.sort((a, b) => a.fr.length - b.fr.length || (back ? b.si - a.si : a.si - b.si));
     return fits[0] || null;
@@ -879,10 +922,9 @@
     const seg = pickSegment(classIdx, ctx.gaps, pending, free, cap, back);
     if (seg) {
       const inner = back ? seg.fr.slice().reverse() : seg.fr.slice();
-      const exam = inner.slice(0, pending.length);
-      const big = pending.map((sb, k) => ({ sb, k })).sort((a, b) => b.sb.stuCount - a.sb.stuCount || a.k - b.k);
-      const byCap = exam.slice().sort((a, b) => cap(b) - cap(a) || a - b);
-      big.forEach(({ sb }, k) => { cells[byCap[k]] = sb.key; });
+      const plan0 = fitPlan(inner, pending, cap);
+      const exam = [...plan0.values()].sort((a, b) => inner.indexOf(a) - inner.indexOf(b));
+      for (const [sb, i] of plan0) cells[i] = sb.key;
       pending.length = 0;
       const buffers = inner.slice(exam.length);
       buffers.forEach((i) => { cells[i] = VOID_CELL; });
@@ -896,8 +938,32 @@
       }
       return cells;
     }
+    // 좌석이 맞는 이어진 교실 묶음 (뒤 교실 → 바로 옆 별도실까지 → 앞 교실, 또는 앞 교실부터)
+    const win = pickWindow(classIdx, extraIdx, pending, free, cap, back);
+    if (win) {
+      for (const [sb, i] of win.plan) cells[i] = sb.key;
+      pending.length = 0;
+      const used = win.list.filter((i) => cells[i]);
+      const at = (i) => win.list.indexOf(i);
+      const lo = Math.min(...used.map(at)), hi = Math.max(...used.map(at));
+      // 묶음 안에서 안 쓰는 교실은 빈 교실로 (시험실 사이에서 자습하지 않게)
+      const inside = win.list.slice(lo, hi + 1).filter((i) => !cells[i]);
+      inside.forEach((i) => { cells[i] = VOID_CELL; });
+      // 완충: 묶음 바로 옆 학반 교실 하나 (앞 묶음이면 뒤쪽, 뒤 묶음이면 앞쪽). 띄워진 공간이 사이에 있으면 두지 않음
+      const usedCls = used.filter((i) => classIdx.includes(i));
+      let buf;
+      if (usedCls.length) {
+        const edge = win.back ? Math.min(...usedCls) : Math.max(...usedCls);
+        buf = classIdx[classIdx.indexOf(edge) + (win.back ? -1 : 1)];
+        if (buf != null && (roomsApart(ctx.gaps, edge, buf) || !free(buf))) buf = undefined;
+        if (buf != null) cells[buf] = VOID_CELL;
+      }
+      fillWaits(classIdx);
+      fillWaits(extraIdx);
+      for (const i of [buf, ...inside].filter((x) => x != null)) { if (remainWait() < 1) break; cells[i] = ''; putWait(i, remainWait()); }
+      return cells;
+    }
     const order = back ? classIdx.slice().reverse() : classIdx.slice();
-    // 분반은 교실 정원보다 조금 커도 앞(뒤) 학반 교실에 둔다 (특별실로 빼거나 학생을 나누지 않음)
     const examRooms = [];
     for (const i of order) { if (examRooms.length >= pending.length) break; if (free(i)) examRooms.push(i); }
     // 큰 분반을 큰 교실에 (같은 크기면 분반 순서대로)

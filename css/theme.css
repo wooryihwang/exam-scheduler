@@ -910,3 +910,23 @@ fieldset.lock-fs[disabled] [data-act="room-resync"], fieldset.lock-fs[disabled] 
 .hm-gapfix { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .hm-gf { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 9px; border-radius: 999px; background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; font-size: 12.5px; font-weight: 700; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hm-gf .chip-x { border: 0; background: none; color: #b45309; cursor: pointer; font-size: 11px; padding: 0 4px; }
+
+/* 첫 화면: 고사장 띄우기 고정 그림 */
+.home .hm-gapcard { margin-top: 14px; }
+.hm-gaprow { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.hm-gaprow:last-child { margin-bottom: 0; }
+.hm-gaprow .hm-gname { width: 56px; flex: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 800; }
+.hm-gaprow .hm-gname i { width: 9px; height: 9px; border-radius: 50%; background: #94a3b8; }
+.hm-gaprow.g1 .hm-gname i { background: #22c55e; } .hm-gaprow.g2 .hm-gname i { background: #3b82f6; } .hm-gaprow.g3 .hm-gname i { background: #dc2626; }
+.hm-strip { flex: 1; min-width: 0; padding: 8px 10px; gap: 4px 2px; }
+.hm-strip .gs-room { min-width: 50px; padding: 4px 6px; }
+.hm-joint { width: 6px; height: 2px; background: #cbd5e1; flex: none; }
+.hm-gapmark { flex: none; margin: 0 8px; padding: 2px 6px; border-radius: 6px; background: #b91c1c; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: -1px; }
+/* 10. 출력물: 제목·탭·도구줄을 위에 붙임 */
+@media (min-width: 761px) {
+  .sticky-group { position: sticky; top: 64px; z-index: 4; background: rgb(241, 245, 249); margin: -20px -24px 12px; padding: 14px 24px 8px; }
+  .sticky-group .step-head { position: static; margin: 0 0 10px; padding: 0; background: none; box-shadow: none; border: 0; }
+  .sticky-group .tabs, .sticky-group .toolbar { margin-bottom: 6px; }
+  .sticky-group.stuck { box-shadow: 0 6px 10px -8px rgba(15, 23, 42, .25); border-bottom: 1px solid rgba(226, 232, 240, .9); }
+}
+@media print { .sticky-group { position: static; } }

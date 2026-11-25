@@ -806,6 +806,8 @@
       if (on) saveGapFix(); else { index.gapFix = { ...(index.gapFix || {}) }; delete index.gapFix[g]; writeJSON(INDEX_KEY, index); }
       commit();
     },
+    /** 작업 공간의 쓸 수 있는 고사실 (첫 화면 띄우기 그림용) */
+    projectRooms(id) { const x = id === index.current ? state : readJSON(pKey(id)); return ((x && x.rooms) || []).filter((r) => C.isRoomUsable(r)).map((r) => ({ name: r.name, cap: r.cap, cls: C.isClassRoom(r) })); },
     clearGapFix(g) { index.gapFix = { ...(index.gapFix || {}) }; delete index.gapFix[g]; writeJSON(INDEX_KEY, index); commit(); },
     /** 고정한 띄우기를 지금 교실 목록에 맞춰 다시 적용 (교실 이름으로 찾음) */
     applyGapFix() { applyGapFix(); commit(); },

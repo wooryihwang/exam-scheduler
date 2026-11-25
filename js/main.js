@@ -500,7 +500,7 @@
   });
   document.addEventListener('pointerdown', hideTip, true);
   // 단계 제목줄이 위에 붙으면 그림자 (확정 버튼이 스크롤로 사라지지 않음)
-  function markStuck() { const sh = viewEl.querySelector('.step-head'); if (sh) sh.classList.toggle('stuck', window.scrollY > 8); }
+  function markStuck() { const sh = viewEl.querySelector('.sticky-group') || viewEl.querySelector('.step-head'); if (sh) sh.classList.toggle('stuck', window.scrollY > 8); }
   window.addEventListener('scroll', markStuck, { passive: true });
   document.addEventListener('scroll', hideTip, true);
   document.addEventListener('pointerdown', (e) => {

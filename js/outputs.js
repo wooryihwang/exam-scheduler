@@ -693,9 +693,9 @@
       ui.scopeLabel = scopeLabel;
       if (ui.tab === 'label') requestAnimationFrame(fitLabelPreview);
       if (!tabs().some(([k]) => k === ui.tab)) ui.tab = 'all';
-      return stepHead(10, (TABS.find(([k]) => k === ui.tab) || [])[1] || '인쇄 및 출력물', '고사 운영에 필요한 시간표와 명단을 미리 봅니다. 범위를 고른 뒤 <b>📊 엑셀 저장</b> · <b>📄 PDF 저장</b> · <b>🖨 출력</b> 중 하나를 누르세요.') +
+      return `<div class="sticky-group">` + stepHead(10, (TABS.find(([k]) => k === ui.tab) || [])[1] || '인쇄 및 출력물', '고사 운영에 필요한 시간표와 명단을 미리 봅니다. 범위를 고른 뒤 <b>📊 엑셀 저장</b> · <b>📄 PDF 저장</b> · <b>🖨 출력</b> 중 하나를 누르세요.') +
         `<div class="tabs">${tabs().map(([k, l]) => `<button class="tab ${ui.tab === k ? 'on' : ''}" data-act="o-tab" data-tab="${k}">${h(l)}</button>`).join('')}</div>
-        <div class="toolbar">${ctrl}<span class="spacer"></span>${printBtns}</div>
+        <div class="toolbar">${ctrl}<span class="spacer"></span>${printBtns}</div></div>
         <div class="preview">${preview}</div>`;
     },
     actions: {

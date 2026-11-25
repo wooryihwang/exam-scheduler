@@ -50,7 +50,6 @@
           <h3>${I.school}<span>기본 설정</span><span class="hm-sub">모든 학년 공통</span></h3>
           <div class="hm-row"><label class="hm-lbl">학교 이름</label><input class="input hm-input" data-change="hm-school" value="${h(S.school())}" placeholder="예) ○○고등학교" maxlength="40" title="모든 학년 출력물 머리에 인쇄됩니다"></div>
           <div class="hm-row"><label class="hm-lbl">폴더 이름</label><input class="input hm-input" data-change="hm-folder" value="${h(folder)}" placeholder="예) 고사시간표 작업파일" maxlength="40" title="저장 위치 안에 이 이름의 폴더를 만듭니다"></div>
-          <div class="hm-row"><label class="hm-lbl">띄우기 고정</label><span class="hm-gapfix">${[1, 2, 3].map((g) => { const fx = S.gapFixed(g); return fx ? `<span class="hm-gf g${g}" title="${h(fx.length ? fx.map((n) => n + ' 뒤').join(', ') : '띄운 곳 없음')}">📌 ${g}학년 ${fx.length ? h(fx.map((n) => n + '│').join(' ')) : '띄운 곳 없음'}<button class="chip-x" data-act="hm-gapfix-off" data-g="${g}" title="${g}학년 고정 풀기">✕</button></span>` : ''; }).join('') || '<span class="muted sm">고정 없음 · 7. 고사장·학생 배치 표 오른쪽 끝 [고사장 띄우기 고정]</span>'}</span></div>
           ${dirOk ? `<div class="hm-row top"><label class="hm-lbl">저장 위치</label>
             <span class="hm-where full ${where ? 'on' : ''}">${where ? `${I.folder}<b>${h(where)}</b>` : '<span class="muted">고르지 않음 · 다운로드 폴더에 저장</span>'}</span>
           </div>
@@ -75,8 +74,24 @@
           </div>
         </section>
       </div>
+      ${gapCard()}
       ${outCard()}
     </div>`;
+  }
+
+  // ---------------------------------------------------------------- 고사장 띄우기 고정 (학년별 그림)
+  function gapCard() {
+    const rows = [1, 2, 3].map((g) => {
+      const fx = S.gapFixed(g); if (!fx) return '';
+      const p = S.projectOfGrade(g), rooms = p ? S.projectRooms(p.id) : [];
+      const set = new Set(fx);
+      const strip = rooms.length
+        ? rooms.map((r, k) => `<span class="gs-room ${r.cls ? '' : 'extra'}"><b>${h(r.name)}</b><small>${r.cap || '-'}명</small></span>${k < rooms.length - 1 ? (set.has(r.name) ? '<span class="hm-gapmark" title="띄워진 공간 (복도·계단 등)">⇤ ⇥</span>' : '<span class="hm-joint"></span>') : ''}`).join('')
+        : `<span class="muted sm">편성현황을 불러오면 교실 모양이 보입니다 · 띄운 곳: ${h(fx.map((n) => n + ' 뒤').join(', ') || '없음')}</span>`;
+      return `<div class="hm-gaprow g${g}"><span class="hm-gname"><i></i>${g}학년</span><div class="gap-strip hm-strip">${strip}</div><button class="btn ghost xs" data-act="hm-gapfix-off" data-g="${g}" title="${g}학년 고정 풀기">고정 풀기</button></div>`;
+    }).join('');
+    if (!rows) return '';
+    return `<section class="card hm-card hm-gapcard"><h3>📌<span>고사장 띄우기 고정</span><span class="hm-sub">초기화하거나 편성현황을 다시 불러와도 이 모양으로 띄웁니다 · 7. 고사장·학생 배치 표 오른쪽 끝에서 바꿈</span></h3>${rows}</section>`;
   }
 
   // ---------------------------------------------------------------- 출력 설정 (예전 [설정] 창 내용, 모든 학년에 적용)
