@@ -272,6 +272,26 @@ const gapFixTest = () => t('고사장 띄우기 고정: 초기화·다시 불러
   S.resetProject(S.currentProject().id);
 });
 
+const allFileTest = () => t('모든 학년 한 파일: 저장 → 다른 PC(빈 상태)에서 불러오기', () => {
+  const rows3 = C.parseNeis(window.Sample.sampleAoa(3)).rows;
+  S.openGrade(1); S.importRows(rows, 'a1.xlsx'); S.confirmRoster();
+  S.openGrade(3); S.importRows(rows3, 'a3.xlsx'); S.setIndustry(S.rosterStudents()[0], true);
+  S.setSchool('시험고등학교');
+  const text = S.exportAll();
+  assert.ok(S.isAllFile(text));
+  const n1 = S.state.rows.length;
+  // 다른 PC처럼 모두 비운 뒤 불러오기
+  S.resetEverything(); S.setSchool('');
+  const names = S.importAll(text);
+  assert.ok(names.includes('1학년') && names.includes('3학년'), names.join(','));
+  assert.strictEqual(S.school(), '시험고등학교');
+  S.openGrade(3); assert.strictEqual(S.state.rows.length, n1);
+  assert.ok(S.industryList().length >= 1);
+  S.openGrade(1); assert.strictEqual(S.state.confirmed.roster, true);
+  assert.strictEqual(S.isAllFile(S.exportJSON()), false, '한 학년 파일은 모든 학년 파일이 아님');
+  S.resetEverything();
+});
+
 const industryTest = () => t('위탁학생: 3학년에서만 · 표시 기억 · 연락 확인', () => {
   const rows3 = C.parseNeis(window.Sample.sampleAoa(3)).rows;
   // 1학년 작업에서는 기능이 꺼짐
@@ -331,4 +351,4 @@ const cellLockTest = () => t('학생 배치 칸 잠금: 자동 배치·인원 �
   assert.strictEqual(S.toggleCellLock(slot.key, i), false);
 });
 
-Promise.all(pending).then(() => { resetTest(); industryTest(); cellLockTest(); resetKeepTest(); basicConfirmTest(); gapFixTest(); console.log(`\n${pass}개 테스트 통과`); }).catch((e) => { console.error(e); process.exit(1); });
+Promise.all(pending).then(() => { resetTest(); industryTest(); cellLockTest(); resetKeepTest(); basicConfirmTest(); gapFixTest(); allFileTest(); console.log(`\n${pass}개 테스트 통과`); }).catch((e) => { console.error(e); process.exit(1); });

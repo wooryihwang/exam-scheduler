@@ -68,7 +68,7 @@
           <h3>${I.file}<span>학년별 작업</span><span class="hm-sub">파일 저장 · 초기화</span></h3>
           <div class="hm-grades">${[1, 2, 3].map(gradeRow).join('')}</div>
           <div class="hm-actions">
-            <button class="btn outline xs" data-act="dl-all" ${anyData ? '' : 'disabled'}>${I.down} 모든 학년 저장</button>
+            <button class="btn outline xs" data-act="dl-all" title="1·2·3학년 작업과 학교 이름·위탁학생·띄우기 고정을 한 파일로 저장합니다. 다른 선생님께 넘기거나 다른 PC로 옮길 때 씁니다." ${anyData ? '' : 'disabled'}>${I.down} 모든 학년 한 파일로 저장</button>
             <label class="btn outline xs" for="restore-file" title="저장해 둔 작업 파일(JSON)을 지금 학년 작업으로 불러옵니다">${I.up} 작업 파일 열기</label>
             <button class="btn danger xs hm-all-reset" data-act="reset-ask" data-g="all" title="1·2·3학년 작업을 모두 비웁니다 (별도 고사실·위탁 학생 유지 여부를 물음)">전체 초기화</button>
           </div>

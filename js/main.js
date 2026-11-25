@@ -339,10 +339,14 @@
       if (!p || !S.projectHasRows(p.id)) return U.toast('그 학년에는 저장할 자료가 없습니다.', 'error');
       downloadProject(p);
     },
+    /** 모든 학년을 한 파일로 (다른 선생님께 넘기기·다른 PC로 옮기기) */
     'dl-all'() {
       const list = S.projects().filter((p) => S.projectHasRows(p.id));
       if (!list.length) return U.toast('저장할 자료가 없습니다.', 'error');
-      list.forEach((p) => downloadProject(p));
+      const d = new Date(), p2 = (n) => String(n).padStart(2, '0');
+      const name = `${S.school() ? S.school() + '_' : ''}고사시간표_모든학년_${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}_${p2(d.getHours())}${p2(d.getMinutes())}.json`;
+      U.saveWork(name, S.exportAll());
+      U.toast(`${list.map((p) => p.name).join('·')} 작업을 한 파일로 저장했습니다. 받는 분은 [작업 파일 열기]로 불러오면 됩니다.`, 'ok');
     },
     /** 학년별 초기화: 고른 학년(작업 공간)만 비운다 */
     async 'reset-grade'(el) {
@@ -451,8 +455,17 @@
     const f = e.target.files[0]; if (!f) return;
     try {
       const text = await U.readFile(f, 'text');
-      if (S.state.rows.length && !(await U.confirm('현재 데이터를 백업 파일 내용으로 바꿀까요?'))) return;
-      S.importJSON(text); U.toast('백업을 불러왔습니다.', 'ok');
+      if (S.isAllFile(text)) {
+        const o = JSON.parse(text), names = o.projects.map((p) => p.name).join('·');
+        const had = o.projects.filter((p) => S.projects().some((x) => x.name === p.name && S.projectHasRows(x.id))).map((p) => p.name);
+        if (!(await U.confirm(`모든 학년 작업 파일입니다: ${names}${o.school ? ` (${o.school})` : ''}
+
+${had.length ? `지금 있는 ${had.join('·')} 작업은 이 파일 내용으로 바뀝니다.` : '그대로 불러옵니다.'}`, '모든 학년 불러오기', '불러오기'))) { e.target.value = ''; return; }
+        const done = S.importAll(text); go('home'); U.toast(`${done.join('·')} 작업을 불러왔습니다.`, 'ok');
+      } else {
+        if (S.state.rows.length && !(await U.confirm('현재 데이터를 백업 파일 내용으로 바꿀까요?'))) return;
+        S.importJSON(text); U.toast('백업을 불러왔습니다.', 'ok');
+      }
     } catch (err) { U.alert('백업 파일을 읽지 못했습니다: ' + err.message); }
     e.target.value = '';
   });

@@ -1059,6 +1059,40 @@
     /** 현재 작업 공간을 지우고 목록에서도 삭제 */
     deleteCurrentProject() { S.deleteProject(index.current); },
     exportJSON() { return JSON.stringify(state); },
+    // ------------------------------------------------ 모든 학년 한 파일 (다른 선생님께 넘기기)
+    /** 자료가 있는 모든 학년 작업 + 학교 이름·위탁학생·띄우기 고정을 한 파일(JSON 글자)로 */
+    exportAll() {
+      flush();
+      const projects = index.list.map((p) => ({ name: p.name, fileName: p.fileName || '', state: p.id === index.current ? state : readJSON(pKey(p.id)) }))
+        .filter((x) => x.state && x.state.rows && x.state.rows.length);
+      return JSON.stringify({ kind: 'exam-scheduler-all', v: 1, savedAt: new Date().toISOString(), school: index.school || '', industry: index.industry || [], gapFix: index.gapFix || {}, saveFolder: index.saveFolder, projects });
+    },
+    /** 모든 학년 파일인가 */
+    isAllFile(text) { try { const o = JSON.parse(text); return !!(o && o.kind === 'exam-scheduler-all' && Array.isArray(o.projects)); } catch (e) { return false; } },
+    /** 모든 학년 파일 불러오기: 같은 이름(1학년 등) 작업 공간은 바꾸고 없으면 만든다. 학교 이름·위탁학생·띄우기 고정도 가져옴 → 불러온 학년 이름들 */
+    importAll(text) {
+      const o = JSON.parse(text);
+      if (!o || o.kind !== 'exam-scheduler-all' || !Array.isArray(o.projects)) throw new Error('모든 학년 작업 파일이 아닙니다.');
+      flush();
+      const names = [];
+      let first = null;
+      for (const pr of o.projects) {
+        if (!pr || !pr.state || !Array.isArray(pr.state.rows)) continue;
+        let p = index.list.find((x) => x.name === pr.name);
+        if (!p) { p = { id: newId(), name: pr.name || '작업' }; index.list.push(p); }
+        p.fileName = pr.fileName || pr.state.fileName || '';
+        writeJSON(pKey(p.id), normalize(pr.state));
+        names.push(p.name); if (!first) first = p.id;
+      }
+      if (o.school) index.school = o.school;
+      if (Array.isArray(o.industry)) index.industry = o.industry;
+      if (o.gapFix && typeof o.gapFix === 'object') index.gapFix = o.gapFix;
+      if (first && !names.includes((index.list.find((x) => x.id === index.current) || {}).name)) index.current = first;
+      state = normalize(readJSON(pKey(index.current)) || blank()); undoStack = []; redoStack = [];
+      writeJSON(INDEX_KEY, index);
+      commit();
+      return names;
+    },
     importJSON(text) {
       const obj = JSON.parse(text);
       if (!obj || obj.v !== 1 || !Array.isArray(obj.rows)) throw new Error('이 프로그램의 백업 파일이 아닙니다.');
