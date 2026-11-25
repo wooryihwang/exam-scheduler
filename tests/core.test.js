@@ -143,6 +143,17 @@ t('좌석 맞추기: 분반은 나누지 않고 좌석이 충분한 교실로 �
   fitted.forEach((v, i) => { if (C.parseCell(v).type === 'home') assert.ok(C.homeSize(info, C.parseCell(v).subject, C.parseCell(v).ban) <= (Number(small[i].cap) || Infinity), `${small[i].name} 좌석 초과`); });
   assert.strictEqual(C.slotPlacementStatus(sl, fitted, info, sbMap, small).warnings.length, 0);
 });
+t('좌석 맞추기: 빈 교실로 정해 둔 교실은 쓰지 않음', () => {
+  const sl = C.examSlots(tt).find((x) => x.key === '1_3');
+  const small = rooms.map((r) => ({ ...r }));
+  small[0].cap = 25; // 1반 교실(29명)을 25석으로 → 넘침
+  const cells = small.map((r) => (C.isClassRoom(r) ? C.homeCell('공통국어1(4)', r.ban) : ''));
+  // 특별실을 모두 '빈 교실'로 정해 둠 → 그리로 옮기지 않음
+  small.forEach((r, i) => { if (!C.isClassRoom(r) && C.isRoomUsable(r)) cells[i] = C.VOID_CELL; });
+  const info = C.slotInfo(sl, students, subjectClasses);
+  const fitted = C.refitSections(cells, small, sbMap, info, null, { useWait: false });
+  small.forEach((r, i) => { if (cells[i] === C.VOID_CELL) assert.strictEqual(fitted[i], C.VOID_CELL, `${r.name} 빈 교실 유지`); });
+});
 t('추가 고사장: 정원 초과 학생을 받아 옴', () => {
   const sl = C.examSlots(tt).find((x) => x.key === '1_3');
   const small = rooms.map((r) => ({ ...r, cap: C.isClassRoom(r) ? 25 : r.cap }));

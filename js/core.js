@@ -440,7 +440,7 @@
    * 자습실을 쓰면 그 자리는 비우고 자습 인원은 fitWaits 가 다른 교실로 다시 나눈다.
    * 맞는 교실이 하나도 없으면 그대로 두어 '정원 초과'로 알린다. → 새 cells
    */
-  function refitSections(cellsIn, rooms, sbMap, info, fixed) {
+  function refitSections(cellsIn, rooms, sbMap, info, fixed, opt = {}) {
     const cells = cellsIn.slice();
     const cap = (i) => Number(rooms[i] && rooms[i].cap) || Infinity;
     const sizeOf = (v) => { const c = parseCell(v); if (c.type === 'exam') { const sb = sbMap.get(c.key); return sb ? sb.stuCount : 0; } if (c.type === 'home') return homeSize(info, c.subject, c.ban) || 0; return 0; };
@@ -449,7 +449,8 @@
     const secPos = cells.map((v, i) => (isSec(v) && free(i) ? i : -1)).filter((i) => i >= 0);
     if (!secPos.some((i) => sizeOf(cells[i]) > cap(i))) return cells;
     const secs = secPos.map((i) => ({ v: cells[i], n: sizeOf(cells[i]), from: i })).sort((a, b) => b.n - a.n || a.from - b.from);
-    const kind = (i) => { const t = parseCell(cells[i]).type; return t === 'void' || t === 'empty' ? 1 : t === 'wait' ? 3 : 9; };
+    // '빈 교실'로 정해 둔 교실은 쓰지 않음. 자습실은 자동 배치 때만 (인원 맞추기는 빈 칸·시험실끼리만)
+    const kind = (i) => { const t = parseCell(cells[i]).type; return t === 'empty' ? 1 : t === 'wait' && opt.useWait !== false ? 3 : 9; };
     const extra = rooms.map((r, i) => (free(i) && !secPos.includes(i) && kind(i) < 9 ? i : -1)).filter((i) => i >= 0)
       .sort((a, b) => kind(a) - kind(b) || (isClassRoom(rooms[b]) - isClassRoom(rooms[a])) || (isClassRoom(rooms[a]) ? a - b : cap(a) - cap(b) || a - b));
     const taken = new Set(), place = new Map();

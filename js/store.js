@@ -1127,7 +1127,7 @@
     if (slot) {
       const info = S.slotInfo(slot), L = S.cellLockSet(slotKey);
       // 좌석보다 큰 분반은 좌석이 충분한 교실로 통째로 옮긴 뒤 자습 인원을 맞춤
-      const fitted = C.refitSections(S.cells(slotKey), state.rooms, S.sbMap(), info, L);
+      const fitted = C.refitSections(S.cells(slotKey), state.rooms, S.sbMap(), info, L, { useWait: false });
       w = C.fitWaits(fitted, state.rooms, info, true, L); state.placement[slotKey] = w.cells;
     }
     const r = rebalance(slotKey);
