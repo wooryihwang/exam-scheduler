@@ -956,3 +956,19 @@ fieldset.lock-fs[disabled] [data-act="room-resync"], fieldset.lock-fs[disabled] 
 .out-bar .scope-radios { flex: 1 1 auto; min-width: 0; }
 .out-bar .scope-radio { padding: 6px 8px; font-size: 12.5px; }
 .out-bar .scope-radios { flex: 1 1 380px; }
+/* 10-1 전체 시간표: 고사실마다 한 칸, 시험실은 진하게, 대기는 연하게, 선은 연하게 */
+.page.allpage .ptbl.all { border: 1.5px solid #64748b; }
+.page.allpage .ptbl.all th, .page.allpage .ptbl.all td { border-color: #d5dbe3; }
+.page.allpage .ptbl.all thead th { border-color: #3b4a66; }
+.page.allpage .ptbl.all .p-date, .page.allpage .ptbl.all .p-gyosi { border-right: 1px solid #94a3b8; }
+.page.allpage .ptbl.all tr.r2 td { border-bottom: 1px solid #a3adbb; }
+.page.allpage .ptbl.all tr.day-start td { border-top: 1.5px solid #475569 !important; }
+.page.allpage .ptbl.all .p-total { border-left: 1px solid #94a3b8; }
+.page.allpage .ptbl.all td.p-exam, .page.allpage .ptbl.all tr.day-even td.p-exam { background: #cfe0f5; color: #0b2545; }
+.page.allpage .ptbl.all tr.r1 td.p-exam { font-weight: 800; line-height: 1.25; }
+.page.allpage .ptbl.all tr.r1 td.p-exam .p-sec { font-weight: 700; color: #1e3a5f; white-space: nowrap; }
+.page.allpage .ptbl.all tr.r2 td.p-exam { color: #0b2545; font-weight: 900; }
+.page.allpage .ptbl.all td.p-wait, .page.allpage .ptbl.all tr.day-even td.p-wait { background: #fbfcfd; color: #a7aeb8; font-weight: 500; }
+.page.allpage .ptbl.all tr.r2 td.p-wait { color: #8b939e; font-weight: 600; }
+.page.allpage .ptbl.all td.p-none, .page.allpage .ptbl.all tr.day-even td.p-none { background: #fff; color: #c3c9d1; }
+.page.allpage .ptbl.all td.p-exam.p-sp { background: #ead9b8; }

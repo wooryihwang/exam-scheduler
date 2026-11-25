@@ -99,25 +99,20 @@
     slots.forEach((slot) => {
       const sameDay = slots.filter((s) => s.day === slot.day).length;
       const cells = rooms.map((r) => cellOf(slot, r.i));
-      // 같은 과목이 이어지면 한 칸으로 합침 (일반 고사실과 별도실은 합치지 않음)
-      const groups = [];
-      cells.forEach((c, k) => {
-        const label = c.kind === 'exam' ? C.onlySubject(c.subject) : c.kind === 'wait' ? '대기(자습)' : '·';
-        const sp = rooms[k].i >= S.SPECIAL_BASE;
-        const g = groups[groups.length - 1];
-        if (g && g.label === label && label !== '·' && g.sp === sp) g.span++; else groups.push({ label, span: 1, kind: c.kind, sp });
-      });
+      // 고사실마다 한 칸 (합치지 않음): 시험실은 과목(학점) + 분반, 대기실은 '대기'
+      const kindCls = (c) => (c.kind === 'exam' ? 'p-exam' : c.kind === 'wait' ? 'p-wait' : 'p-none');
+      const label = (c) => (c.kind === 'exam' ? `<span class="p-subj">${h(c.special ? c.subject : c.subject)}</span>${c.label && !c.special ? ` <span class="p-sec">${h(c.label)}</span>` : ''}` : c.kind === 'wait' ? '대기' : '·');
       const total = cells.reduce((t, c) => t + (c.kind === 'exam' ? c.count : 0), 0);
       const newDay = slot.day !== lastDay;
       if (newDay) dayNo++;
       const dayCls = `${dayNo % 2 ? 'day-odd' : 'day-even'}${newDay && dayNo > 1 ? ' day-start' : ''}`;
       const dayCell = newDay ? `<td class="p-date" rowspan="${sameDay * 2}">${h(U.fmtDateShort(slotDate(slot)) || slot.day + '일차')}</td>` : '';
       lastDay = slot.day;
-      body += `<tr class="r1 ${dayCls}">${dayCell}<td class="p-gyosi">${slot.period}교시<small>(${C.minutesOf(slotTime(slot))})</small></td>${groups.map((g) => `<td colspan="${g.span}" class="${g.kind === 'wait' ? 'p-wait' : ''} ${g.sp ? 'p-sp' : ''}">${h(g.label)}</td>`).join('')}<td rowspan="2" class="p-total">${total}</td></tr>
-        <tr class="r2 ${dayCls.replace(' day-start', '')}"><td class="p-time">${h(slotTime(slot).replace(/\s/g, ''))}</td>${cells.map((c, k) => `<td class="p-cnt ${rooms[k].i >= S.SPECIAL_BASE ? 'p-sp' : ''}">${c.count || '·'}</td>`).join('')}</tr>`;
+      body += `<tr class="r1 ${dayCls}">${dayCell}<td class="p-gyosi">${slot.period}교시<small>(${C.minutesOf(slotTime(slot))})</small></td>${cells.map((c, k) => `<td class="${kindCls(c)} ${rooms[k].i >= S.SPECIAL_BASE ? 'p-sp' : ''}">${label(c)}</td>`).join('')}<td rowspan="2" class="p-total">${total}</td></tr>
+        <tr class="r2 ${dayCls.replace(' day-start', '')}"><td class="p-time">${h(slotTime(slot).replace(/\s/g, ''))}</td>${cells.map((c, k) => `<td class="p-cnt ${kindCls(c)} ${rooms[k].i >= S.SPECIAL_BASE ? 'p-sp' : ''}">${c.count || '·'}</td>`).join('')}</tr>`;
     });
     const size = slots.length > 11 ? 'all-s' : slots.length > 8 ? 'all-m' : 'all-l';
-    return `<div class="page landscape fill allpage ${size} ${st().out.paper === 'B4' ? 'b4' : ''}" data-sheet="전체 시간표"><div class="seat-head">${schoolLine()}<div class="sh-sub">${h(S.title())}</div><div class="sh-title">시험시간표</div><div class="sh-note">위 칸: 시험 과목 · 아래 칸: 고사실 인원 (대기 = 미응시 학생 자습)${rooms.some((r) => r.i >= S.SPECIAL_BASE) ? ' · 연한 갈색 칸: 별도실' : ''}</div></div>
+    return `<div class="page landscape fill allpage ${size} ${st().out.paper === 'B4' ? 'b4' : ''}" data-sheet="전체 시간표"><div class="seat-head">${schoolLine()}<div class="sh-sub">${h(S.title())}</div><div class="sh-title">시험시간표</div><div class="sh-note">위 칸: 시험 과목·분반 · 아래 칸: 고사실 인원 (진한 칸 = 시험실, 연한 칸 대기 = 미응시 학생 자습)${rooms.some((r) => r.i >= S.SPECIAL_BASE) ? ' · 연한 갈색 칸: 별도실' : ''}</div></div>
       <table class="ptbl all fill-main"><colgroup><col class="c-date"><col class="c-gubun">${rooms.map(() => `<col style="width:${(76 / Math.max(1, rooms.length)).toFixed(3)}%">`).join('')}<col class="c-total"></colgroup><thead><tr><th>날짜</th><th>구분</th>${rooms.map((r) => `<th class="${r.i >= S.SPECIAL_BASE ? 'p-sp' : ''}">${h(r.name)}</th>`).join('')}<th>응시계</th></tr></thead><tbody>${body}</tbody></table></div>`;
   }
 
