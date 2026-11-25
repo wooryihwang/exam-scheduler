@@ -930,3 +930,9 @@ fieldset.lock-fs[disabled] [data-act="room-resync"], fieldset.lock-fs[disabled] 
   .sticky-group.stuck { box-shadow: 0 6px 10px -8px rgba(15, 23, 42, .25); border-bottom: 1px solid rgba(226, 232, 240, .9); }
 }
 @media print { .sticky-group { position: static; } }
+/* 사이드바: 출력물은 한 줄(10. 인쇄 및 출력물)만, 작성 단계 메뉴는 크게 */
+.sidebar .nav { padding: 6px 12px; gap: 2px; }
+.sidebar .nav-sec { font-size: 12.5px; padding: 6px 8px; }
+.sidebar .nav-item { font-size: 15.5px; font-weight: 700; padding: 7px 12px; gap: 11px; border-radius: 9px; }
+.sidebar .nav-item .nav-ico svg { width: 19px; height: 19px; }
+.sidebar .nav-sec.reports { margin-top: 8px; padding-top: 10px; }

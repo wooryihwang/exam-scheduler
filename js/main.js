@@ -47,16 +47,14 @@
     renderProjects();
     const steps = views.filter((v) => v.id !== 'outputs' && v.id !== 'home');
     const out = views.find((v) => v.id === 'outputs');
-    const tabs = (V.outputsTabs && V.outputsTabs()) || [];
-    const curTab = V.outputsTab ? V.outputsTab() : '';
     document.getElementById('nav').innerHTML = '<div class="nav-sec">작성 단계</div>' + steps.map((v) => `
       <button class="nav-item ${v.id === current ? 'on' : ''} ${v.status() ? 'done' : ''}" data-act="go" data-view="${v.id}">
         <span class="nav-ico" aria-hidden="true">${NAV_ICONS[v.id] || ''}</span><span class="nav-label-text">${v.no}. ${h(v.title)}</span>${SEL_BADGE[v.id] ? `<span class="nav-sel" title="해당 학생이 있을 때만 쓰는 단계">${SEL_BADGE[v.id]}</span>` : `<span class="nav-dot" title="${v.status() ? '확정' : '미확정'}"></span>`}
       </button>`).join('') +
-      (out ? `<div class="nav-sec reports"><span>인쇄 및 출력물</span><span class="en">REPORTS</span></div><div class="nav-subs">` + tabs.map(([k, l]) => `
-      <button class="nav-item sub ${current === 'outputs' && curTab === k ? 'on' : ''} ${out.status() ? 'done' : ''}" data-act="go-out" data-tab="${k}">
-        <span class="nav-ico" aria-hidden="true">${NAV_ICONS.outputs}</span><span class="nav-label-text">${h(l)}</span>
-      </button>`).join('') + '</div>' : '');
+      (out ? `<div class="nav-sec reports"><span>인쇄 및 출력물</span><span class="en">REPORTS</span></div>
+      <button class="nav-item ${current === 'outputs' ? 'on' : ''} ${out.status() ? 'done' : ''}" data-act="go" data-view="outputs">
+        <span class="nav-ico" aria-hidden="true">${NAV_ICONS.outputs}</span><span class="nav-label-text">10. 인쇄 및 출력물</span><span class="nav-dot" title="${out.status() ? '출력 가능' : '응시현황 확정 전'}"></span>
+      </button>` : '');
     const g = S.currentGrade();
     const lb = S.lastBackup();
     const atHome = current === 'home';
