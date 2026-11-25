@@ -59,11 +59,16 @@
       </button>`).join('') : '');
     const g = S.currentGrade();
     const lb = S.lastBackup();
-    document.getElementById('top-seg').innerHTML = `<div class="seg-wrap" role="group" aria-label="작업 학년">${[1, 2, 3].map((n) => `<button class="tseg g${n} ${g === n ? 'on' : ''}" data-act="side-grade" data-g="${n}" title="${n}학년 작업 열기"><i></i>${n}학년</button>`).join('')}</div>`;
+    const atHome = current === 'home';
+    document.getElementById('top-seg').innerHTML = atHome ? '' : `<div class="seg-wrap" role="group" aria-label="작업 학년">${[1, 2, 3].map((n) => `<button class="tseg g${n} ${g === n ? 'on' : ''}" data-act="side-grade" data-g="${n}" title="${n}학년 작업 열기"><i></i>${n}학년</button>`).join('')}</div>`;
     const ttl = S.state.rows.length ? S.title() : S.currentProject().name;
-    document.getElementById('crumbs').innerHTML = `<span class="top-title" title="${h(ttl)}">${h(ttl)}</span><button class="btn text xs" data-act="proj-rename" title="이름 바꾸기">✎ 수정</button>`;
+    document.getElementById('crumbs').innerHTML = atHome ? '<span class="top-title">첫 화면</span><span class="top-sub">모든 학년 공통 설정</span>' : `<span class="top-title" title="${h(ttl)}">${h(ttl)}</span><button class="btn text xs" data-act="proj-rename" title="이름 바꾸기">✎ 수정</button>`;
+    const fs = U.saveDir.status, hasDir = U.saveDir.has();
+    const folderChip = !hasDir ? '' : fs.perm === 'granted'
+      ? `<button class="sync-chip folder on" data-act="go" data-view="home" data-tip="바뀐 내용을 저장 폴더(${h(U.saveDir.where())})의 학년 폴더에 자동으로 저장합니다."><i></i>폴더 저장 ${fs.last ? fmtT(fs.last) : '켜짐'}</button>`
+      : `<button class="sync-chip folder warn" data-act="folder-grant" data-tip="저장 폴더에 쓰려면 한 번 허용해야 합니다. 눌러서 허용하세요."><i></i>폴더 저장 허용 필요</button>`;
     document.getElementById('progress').innerHTML =
-      `<button class="btn dark sm" data-act="backup" title="현재 학년 작업 전체를 JSON 파일로 내려받습니다 (오프라인 보관·다른 PC로 이동)">💾 작업 파일 다운로드</button>` +
+      (atHome ? '' : `<button class="btn dark sm" data-act="backup" title="현재 학년 작업 전체를 작업 파일(JSON)로 저장합니다 (저장 폴더를 정했으면 그 학년 폴더에)">💾 작업 파일 다운로드</button>`) + folderChip +
       `<button class="sync-chip ${S.autoSaveOn() && lb ? 'on' : ''}" data-act="snapshot" data-tip="${S.autoSaveOn() ? '바뀐 내용을 2분마다 기록으로 남깁니다. 눌러서 원하는 시점으로 되돌릴 수 있습니다.' : '자동 저장이 꺼져 있습니다. 사이드바 [자동 저장]에서 켤 수 있습니다.'}"><i></i>${!S.autoSaveOn() ? '자동 저장 꺼짐' : lb ? `자동 저장 ${fmtT(lb)}` : '자동 저장 켜짐'}</button>`;
     const ab = document.getElementById('autosave-btn'); if (ab) { ab.classList.toggle('off', !S.autoSaveOn()); ab.title = S.autoSaveOn() ? '자동 저장 켜짐 · 2분마다 기록 (눌러서 끄기·사용량)' : '자동 저장 꺼짐 (눌러서 켜기)'; }
     const si = S.storageInfo(), note = document.querySelector('.side-note');
@@ -72,8 +77,9 @@
 
   function render(keepFocus) {
     // 학년별 배경색 (1 노랑, 2 초록, 3 빨강)
-    const g = S.currentGrade();
+    const g = current === 'home' ? 0 : S.currentGrade();
     if (document.body.dataset.grade !== String(g || '')) document.body.dataset.grade = g || '';
+    document.body.classList.toggle('at-home', current === 'home');
     if (document.body.dataset.theme !== S.theme()) document.body.dataset.theme = S.theme();
     let focus = null;
     const a = document.activeElement;
@@ -116,8 +122,53 @@
     if (!json) return;
     const d = new Date();
     const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
-    U.saveWork(`고사배치_${p.name}_${stamp}.json`, json);
+    U.saveWork(`고사배치_${p.name}_${stamp}.json`, json, gradeFolder(p));
   }
+  /** 저장 폴더 안의 학년 폴더 이름: '1학년' (작업 공간 이름) */
+  function gradeFolder(p) { return String((p && p.name) || '작업').replace(/[\\/:*?"<>|]/g, '').trim() || '작업'; }
+
+  // ---------------------------------------------------------------- 저장 폴더 자동 저장
+  // 바뀐 학년 작업을 3초 뒤 [저장 폴더]\[폴더 이름]\[N학년]\고사배치_N학년_자동저장.json 에 덮어쓴다.
+  // 브라우저는 다시 켤 때마다 폴더 권한을 한 번 물을 수 있어, 그때는 화면을 처음 누르는 순간 허용을 묻는다.
+  const folderPending = new Set();
+  let folderTimer = 0, folderAsked = false;
+  function queueFolderSave(id) {
+    if (!U.saveDir.has()) return;
+    const pid = id || (S.currentProject() || {}).id;
+    if (!pid) return;
+    folderPending.add(pid);
+    clearTimeout(folderTimer);
+    folderTimer = setTimeout(flushFolder, 3000);
+  }
+  async function flushFolder() {
+    const ids = [...folderPending]; folderPending.clear();
+    let wrote = false;
+    for (const id of ids) {
+      const p = S.projects().find((x) => x.id === id); if (!p) continue;
+      const json = S.projectJSON(id); if (!json) continue;
+      const w = await U.saveDir.writeAuto(`고사배치_${gradeFolder(p)}_자동저장.json`, json, gradeFolder(p));
+      if (w) wrote = true; else folderPending.add(id);
+    }
+    if (wrote || ids.length) renderNav();
+  }
+  /** 모든 학년(자료가 있는 것)을 지금 폴더에 저장 */
+  function saveAllToFolder() { S.projects().forEach((p) => { if (S.projectHasRows(p.id)) folderPending.add(p.id); }); clearTimeout(folderTimer); return flushFolder(); }
+  async function grantFolder() {
+    folderAsked = true;
+    const perm = await U.saveDir.request();
+    U.saveDir.status.perm = perm;
+    if (perm === 'granted') { await saveAllToFolder(); U.toast(`저장 폴더(${U.saveDir.where()})에 자동 저장합니다.`, 'ok'); }
+    render();
+    return perm;
+  }
+  V.folder = { queue: queueFolderSave, saveAll: saveAllToFolder, grant: grantFolder, gradeFolder };
+  S.subscribe(() => queueFolderSave());
+  U.saveDir.loaded.then(async () => { U.saveDir.status.perm = await U.saveDir.permission(); render(true); if (U.saveDir.status.perm === 'granted') saveAllToFolder(); });
+  // 권한이 아직이면, 저장할 것이 생긴 뒤 화면을 처음 누를 때 한 번 묻는다
+  document.addEventListener('pointerdown', () => {
+    if (folderAsked || !U.saveDir.has() || U.saveDir.status.perm === 'granted' || !folderPending.size) return;
+    grantFolder();
+  }, true);
   /** 초기화 방식 고르기: 위탁학생·별도 고사실 학생 남기기 / 모두 */
   const keepOpts = (keep, withIndustry) => `<div class="rs-keep">
       <label class="rs-opt keep"><input type="radio" name="rs-keep" value="1" ${keep ? 'checked' : ''}><b>${withIndustry ? '위탁학생·별도 고사실 학생은 그대로 두고 초기화' : '별도 고사실 학생은 그대로 두고 초기화'}</b><span class="muted sm">편성현황을 다시 불러오면 그대로 표시됩니다</span></label>
@@ -222,8 +273,11 @@
       for (const k of ['seatOrder', 'seatList', 'labelStyle', 'paper', 'slipSeat', 'slipNoteOn']) if (out[k] !== o[k]) S.setOut(k, out[k]);
       U.toast('설정을 저장하였습니다.', 'ok');
     },
+    'folder-grant'() { grantFolder(); },
     'side-grade'(el) {
       const g = +el.dataset.g;
+      // 첫 화면(모든 학년 공통)에서 학년을 고르면 그 학년 작업의 1단계로
+      if (current === 'home') { if (S.currentGrade() !== g) S.openGrade(g); go('roster'); return; }
       if (S.currentGrade() === g) return;
       const existed = !!S.projectOfGrade(g);
       S.openGrade(g); render();
@@ -233,7 +287,7 @@
       if (!S.state.rows.length) return U.toast('저장할 데이터가 없습니다.', 'error');
       const d = new Date();
       const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
-      U.saveWork(`고사배치_${S.currentProject().name}_${stamp}.json`, S.exportJSON());
+      U.saveWork(`고사배치_${S.currentProject().name}_${stamp}.json`, S.exportJSON(), gradeFolder(S.currentProject()));
     },
     /** 첫 화면: 작업 파일 내려받기 (한 학년 / 모든 학년) */
     'dl-project'(el) {

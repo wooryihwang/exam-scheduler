@@ -37,6 +37,12 @@
     const dirOk = U.saveDir && U.saveDir.supported;
     const where = U.saveDir ? U.saveDir.where() : '';
     const folder = S.saveFolder();
+    const st = U.saveDir.status, ok = st.perm === 'granted';
+    const fmt = (t) => new Date(t).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const tree = where ? `<div class="hm-tree"><div>${I.folder}<b>${h(where)}</b></div>${[1, 2, 3].map((g) => `<div class="t2">${I.folder}${g}학년<span class="muted">\\고사배치_${g}학년_자동저장.json</span></div>`).join('')}</div>` : '';
+    const stateLine = !where ? '' : ok
+      ? `<div class="hm-state ok"><i></i>자동 저장 중${st.last ? ` · 마지막 저장 ${fmt(st.last)}` : ''}</div>`
+      : `<div class="hm-state warn"><i></i>이 폴더에 저장하려면 허용이 필요합니다.<button class="btn primary sm" data-act="folder-grant">허용하기</button></div>`;
     const anyData = S.projects().some((p) => S.projectHasRows(p.id));
     return `
     <div class="home">
@@ -44,9 +50,8 @@
         <div class="hm-mark">${ico('<path d="M12 3l2.2 5.2 5.6.5-4.3 3.7 1.3 5.5L12 15l-4.8 2.9 1.3-5.5L4.2 8.7l5.6-.5z"/>', 30)}</div>
         <div class="hm-hero-text">
           <h1>고사시간표 시스템 <span class="ver">ver. 1.2</span></h1>
-          <p>처음 한 번 <b>학교 이름</b>과 <b>저장 폴더</b>를 정해 두고, 왼쪽에서 학년을 골라 <b>1. 학생편성현황</b>부터 시작하세요.</p>
+          <p>모든 학년에 공통인 설정입니다. 처음 한 번 <b>학교 이름</b>과 <b>저장 폴더</b>를 정해 두면, 왼쪽에서 학년을 골라 하는 작업이 그 폴더 안의 <b>학년 폴더</b>에 자동으로 저장됩니다.</p>
         </div>
-        <button class="btn primary" data-act="go" data-view="roster">1. 학생편성현황으로 →</button>
       </div>
 
       <div class="hm-grid">
@@ -68,7 +73,8 @@
             <button class="btn outline sm" data-act="hm-pick-dir">${where ? '바꾸기' : '폴더 고르기'}</button>
             ${where ? '<button class="btn ghost sm" data-act="hm-clear-dir" title="다운로드 폴더에 저장하도록 되돌립니다">해제</button>' : ''}
           </div>
-          <p class="hint">고른 폴더 안에 <b>${h(folder || '(폴더 이름 없음)')}</b> 폴더를 만들어 작업 파일(JSON)을 저장합니다. 수동 저장·작업 파일 다운로드에 모두 쓰입니다.</p>`
+          ${stateLine}${tree}
+          <p class="hint">고른 위치 안에 <b>${h(folder || '(폴더 이름 없음)')}</b> 폴더와 <b>1학년·2학년·3학년</b> 폴더를 만들어, 그 학년 작업이 바뀔 때마다 자동으로 저장합니다. 수동 저장·작업 파일 다운로드도 그 학년 폴더에 들어갑니다. (브라우저를 다시 켜면 허용을 한 번 더 물을 수 있습니다)</p>`
           : '<p class="hint">이 브라우저는 폴더 지정을 지원하지 않아 <b>다운로드 폴더</b>에 저장됩니다. (크롬·엣지에서는 폴더를 고를 수 있습니다)</p>'}
         </section>
 
@@ -103,13 +109,19 @@
     render,
     actions: {
       async 'hm-pick-dir'() {
-        try { const n = await U.saveDir.pick(); rerender(); U.toast(`저장 위치를 「${n}」 폴더로 정했습니다.`, 'ok'); } catch (e) { if (e && e.name !== 'AbortError') U.alert('폴더를 고르지 못했습니다: ' + (e.message || e)); }
+        try {
+          await U.saveDir.pick();
+          U.saveDir.status.perm = await U.saveDir.permission();
+          if (Views.folder) await Views.folder.saveAll();
+          rerender();
+          U.toast(`저장 폴더를 「${U.saveDir.where()}」로 정했습니다. 학년별 작업이 학년 폴더에 자동 저장됩니다.`, 'ok');
+        } catch (e) { if (e && e.name !== 'AbortError') U.alert('폴더를 고르지 못했습니다: ' + (e.message || e)); }
       },
       async 'hm-clear-dir'() { await U.saveDir.clear(); rerender(); U.toast('이제 다운로드 폴더에 저장합니다.', 'ok'); },
     },
     change: {
       'hm-school'(el) { S.setSchool(el.value); U.toast('학교 이름을 저장하였습니다.', 'ok'); },
-      'hm-folder'(el) { S.setSaveFolder(el.value); U.toast('폴더 이름을 저장하였습니다.', 'ok'); },
+      'hm-folder'(el) { S.setSaveFolder(el.value); if (Views.folder) Views.folder.saveAll(); U.toast('폴더 이름을 저장하였습니다.', 'ok'); },
       'hm-keep'(el) { ui.keep = el.value === '1'; rerender(); },
     },
   };
