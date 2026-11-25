@@ -138,6 +138,9 @@ t('인원 맞추기·좌석 맞추기: 넘치는 학생만 가까운 같은 과�
   assert.ok(b.moved === 4 && !b.unresolved.length, JSON.stringify(b));
   const near = cells.findIndex((v, i) => i > 0 && C.parseCell(v).type === 'home');
   assert.ok(Object.values(b.moves).every((i) => i === near), '가장 가까운 같은 과목 교실로 ' + JSON.stringify(b.moves));
+  // 두 교실을 잠근 뒤 다시 인원 맞추기: 잠긴 교실과 관련된 예전 이동은 그대로
+  const again = C.balanceMoves({ ...ctx, locked: new Set([0, near]), prevMoves: b.moves }, sl, cells);
+  assert.deepStrictEqual(again.moves, b.moves, '잠긴 교실 학생 이동 유지');
   // 좌석 맞추기: 1반 학급을 좌석이 충분한 빈 교실(특별실)로 통째로 옮김
   const info = C.slotInfo(sl, students, subjectClasses);
   const fitted = C.refitSections(cells, small, sbMap, info, null);

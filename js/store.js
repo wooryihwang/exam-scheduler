@@ -1114,7 +1114,7 @@
     const slot = C.placeSlots(state.timetable).find((x) => x.key === slotKey);
     if (!slot) return { moved: 0, unresolved: [] };
     cache.clear();
-    const ctx = { rooms: state.rooms, sbMap: C.subjectBanMap(state.subjectClasses), students: S.students(), idx: C.studentIndex(state.rows), waitMode: state.options.waitMode, locked: S.cellLockSet(slotKey) };
+    const ctx = { rooms: state.rooms, sbMap: C.subjectBanMap(state.subjectClasses), students: S.students(), idx: C.studentIndex(state.rows), waitMode: state.options.waitMode, locked: S.cellLockSet(slotKey), prevMoves: (state.moves || {})[slotKey] || {} };
     const r = C.balanceMoves(ctx, slot, S.cells(slotKey));
     if (r.moved) state.moves[slotKey] = r.moves; else delete state.moves[slotKey];
     return r;

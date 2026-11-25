@@ -1128,7 +1128,14 @@
    */
   function balanceMoves(ctx, slot, cells) {
     const { rooms } = ctx;
-    const base = slotRoster(ctx, slot, cells, {});
+    // 잠긴 칸과 관련된 예전 학생 이동(잠긴 교실로 들어오거나 나간 학생)은 그대로 둔다
+    const keep = {};
+    if (ctx.locked && ctx.locked.size && ctx.prevMoves) {
+      const from = new Map();
+      for (const [i, r] of slotRoster(ctx, slot, cells, {}).rooms) for (const s of r.list) from.set(studentKey(s.ban, s.num), i);
+      for (const [k, to] of Object.entries(ctx.prevMoves)) if (ctx.locked.has(Number(to)) || ctx.locked.has(from.get(k))) keep[k] = to;
+    }
+    const base = slotRoster(ctx, slot, cells, keep);
     // 시험실 정원은 그 분반 원래 인원(학생 이동 전) 이상 → 분반을 다른 교실로 나누지 않음
     const cap = (i) => Number(rooms[i].cap) || Infinity;
     const groups = new Map(); // 같은 과목 시험실끼리, 자습실끼리. 시험실 정원은 그 분반 인원 이상이라 분반 학생을 다른 교실로 나누지 않음 (잠긴 칸 제외)
@@ -1138,8 +1145,8 @@
       if (!groups.has(g)) groups.set(g, []);
       groups.get(g).push({ i, list: r.list.slice(), kind: r.kind, more: parseCell(cells[i]).type === 'more' });
     }
-    const moves = {}, unresolved = [];
-    let moved = 0;
+    const moves = { ...keep }, unresolved = [];
+    let moved = Object.keys(keep).length;
     for (const list of groups.values()) {
       for (;;) {
         const over = list.filter((x) => x.list.length > cap(x.i)).sort((a, b) => (b.list.length - cap(b.i)) - (a.list.length - cap(a.i)))[0];
