@@ -950,3 +950,9 @@ fieldset.lock-fs[disabled] [data-act="room-resync"], fieldset.lock-fs[disabled] 
 .out-bar .scope-radios { flex: 1 1 360px; }
 .out-bar > .btn { flex: none; white-space: nowrap; }
 .out-bar .scope-radio { white-space: normal; text-align: center; line-height: 1.25; }
+/* 출력 범위·저장 줄: 모든 탭에서 같은 크기·같은 자리 (오른쪽, 한 줄 아래) */
+.sticky-group .toolbar .spacer { flex: 1 0 100%; height: 0; }
+.toolbar .out-bar { flex: 0 1 900px; width: 900px; max-width: 100%; margin-left: auto; justify-content: flex-end; }
+.out-bar .scope-radios { flex: 1 1 auto; min-width: 0; }
+.out-bar .scope-radio { padding: 6px 8px; font-size: 12.5px; }
+.out-bar .scope-radios { flex: 1 1 380px; }

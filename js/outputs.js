@@ -525,15 +525,11 @@
     if (!(key in ui.pc)) { try { ui.pc[key] = (printHtml(scope).match(/class="page[\s"]/g) || []).length; } catch (e) { ui.pc[key] = 0; } }
     return ui.pc[key];
   };
-  /** [출력](고른 범위) + [전체 한 번에 출력](가장 넓은 범위) — 범위가 같으면 하나만 */
+  /** [🖨 출력 (N쪽)]: 고른 범위 그대로 출력, 쪽수 표시 */
   function printPair(scopes) {
-    const widest = scopes[scopes.length - 1][0];
-    ui.widest = widest;
-    const all = pageCount(widest);
-    if (ui.scope === widest) return `<button class="btn primary sm print-all" data-act="out-print" title="이 탭의 모든 자료를 한 번에 프린터로 출력">🖨 전체 한 번에 출력${all ? ` (${all}쪽)` : ''}</button>`;
-    const cur = pageCount(ui.scope);
-    return `<button class="btn outline sm" data-act="out-print" title="고른 범위만 프린터로 출력">🖨 출력${cur ? ` (${cur}쪽)` : ''}</button>
-        <button class="btn primary sm print-all" data-act="out-print-all" title="범위와 관계없이 이 탭의 모든 자료를 한 번에 출력">🖨 전체 출력${all ? ` (${all}쪽)` : ''}</button>`;
+    ui.widest = scopes[scopes.length - 1][0];
+    const n = pageCount(ui.scope);
+    return `<button class="btn primary sm print-all" data-act="out-print" title="고른 범위를 프린터로 출력">🖨 출력${n ? ` (${n}쪽)` : ''}</button>`;
   }
   /** 라벨 '선택' 범위는 하나 이상 골라야 함 */
   const scopeReady = () => { if (ui.tab === 'label' && !labels().length) { U.toast('인쇄할 라벨이 없습니다.', 'error'); return false; } return true; };
@@ -737,7 +733,6 @@
       'o-tab'(el) { ui.tab = el.dataset.tab; rerender(); },
       'o-more'() { ui.pvMax = (ui.pvMax || PV_STEP) + PV_STEP; rerender(); },
       'out-print'() { if (!scopeReady()) return; doPrint(ui.scope); },
-      'out-print-all'() { if (!scopeReady()) return; doPrint(ui.widest || 'every'); },
       'out-excel'() { if (!scopeReady()) return; exportExcel(ui.scope, ui.scopeLabel); },
       'out-pdf'() { if (!scopeReady()) return; exportPdf(ui.scope, ui.scopeLabel); },
       'print-cur'() { doPrint('cur'); },
