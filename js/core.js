@@ -1130,6 +1130,22 @@
         moves[studentKey(s.ban, s.num)] = to.i;
         moved++;
       }
+      // 추가 고사장이 있는 과목: 그 과목 시험실과 추가 고사장의 인원을 골고루 (예: 27·30·0 → 19·19·19)
+      const mores = list.filter((x) => x.more);
+      if (mores.length && list[0] && list[0].kind !== 'wait') {
+        const total = list.reduce((t, x) => t + x.list.length, 0);
+        const target = Math.ceil(total / list.length);
+        for (let guard = 0; guard < total; guard++) {
+          const to = mores.filter((x) => x.list.length < Math.min(target, cap(x.i))).sort((a, b) => a.list.length - b.list.length || a.i - b.i)[0];
+          if (!to) break;
+          const from = list.filter((x) => !x.more && x.list.length > target).sort((a, b) => b.list.length - a.list.length || a.i - b.i)[0];
+          if (!from) break;
+          const [s] = from.list.splice(from.list.length - 1, 1); // 명단 뒤쪽 학생부터
+          to.list.push(s);
+          moves[studentKey(s.ban, s.num)] = to.i;
+          moved++;
+        }
+      }
     }
     return { moves, moved, unresolved };
   }

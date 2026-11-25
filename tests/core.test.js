@@ -167,6 +167,11 @@ t('추가 고사장: 정원 초과 학생을 받아 옴', () => {
   const r = C.slotRoster(ctx, sl, cells, b.moves);
   assert.strictEqual(r.rooms.get(6).list.length, b.moved);
   for (const [i, x] of r.rooms) assert.ok(x.list.length <= small[i].cap);
+  // 골고루: 그 과목 교실들의 인원 차이가 1명 이하 (좌석이 허락하는 한)
+  const ns = [...r.rooms.values()].filter((x) => x.kind !== 'wait').map((x) => x.list.length);
+  const total = ns.reduce((t, n) => t + n, 0), target = Math.ceil(total / ns.length);
+  assert.ok(Math.max(...ns) <= Math.max(target, 0) || Math.max(...ns) - Math.min(...ns) <= 1, JSON.stringify(ns));
+  assert.ok(r.rooms.get(6).list.length >= Math.min(target, Number(small[6].cap) || target) - 1, '추가 고사장도 고르게 받음 ' + JSON.stringify(ns));
 });
 t('배치 확정 전 엄격 검사: 정원 초과·빈 추가 고사장·미배치를 모두 찾음', () => {
   const roomy = rooms.map((r) => ({ ...r, cap: 40 }));
