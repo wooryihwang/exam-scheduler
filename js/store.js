@@ -319,7 +319,7 @@
     school: () => index.school || '',
     setSchool(v) { index.school = String(v || '').trim(); writeJSON(INDEX_KEY, index); commit(); },
     /** 작업 파일을 넣을 폴더 이름 (첫 화면에서 정함, 모든 학년 공통) */
-    saveFolder: () => (index.saveFolder === undefined ? '고사시간표 작업파일' : index.saveFolder),
+    saveFolder: () => (index.saveFolder === undefined ? '고사프로그램데이터' : index.saveFolder),
     setSaveFolder(v) { index.saveFolder = String(v || '').replace(/[\\/:*?"<>|]/g, '').trim(); writeJSON(INDEX_KEY, index); commit(); },
     /** 작업 공간에 지정된 별도 고사실 학생 수 */
     projectSpecialCount(id) { const x = id === index.current ? state : readJSON(pKey(id)); return Object.keys((x && x.special && x.special.students) || {}).length; },

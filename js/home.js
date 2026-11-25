@@ -51,16 +51,16 @@
           <div class="hm-row"><label class="hm-lbl">학교 이름</label><input class="input hm-input" data-change="hm-school" value="${h(S.school())}" placeholder="예) ○○고등학교" maxlength="40" title="모든 학년 출력물 머리에 인쇄됩니다"></div>
           <div class="hm-row"><label class="hm-lbl">폴더 이름</label><input class="input hm-input" data-change="hm-folder" value="${h(folder)}" placeholder="예) 고사시간표 작업파일" maxlength="40" title="저장 위치 안에 이 이름의 폴더를 만듭니다"></div>
           ${dirOk ? `<div class="hm-row top"><label class="hm-lbl">저장 위치</label>
-            <span class="hm-where full ${where ? 'on' : ''}">${where ? `${I.folder}<b>${h(where)}</b>` : '<span class="muted">고르지 않음 · 다운로드 폴더에 저장</span>'}</span>
+            <span class="hm-where full ${where ? 'on' : ''}">${where ? `${I.folder}<b>${h(where)}</b>` : '<span class="muted">아직 고르지 않음 — [📁 문서 폴더 고르기]를 누르세요 (지금은 다운로드 폴더에 저장)</span>'}</span>
           </div>
           <div class="hm-row hm-row-btns"><span class="hm-lbl"></span>${state}
-            <button class="btn outline xs" data-act="hm-pick-dir">${where ? '바꾸기' : '폴더 고르기'}</button>${where ? '<button class="btn ghost xs" data-act="hm-clear-dir" title="다운로드 폴더에 저장하도록 되돌립니다">해제</button>' : ''}
+            <button class="btn outline xs" data-act="hm-pick-dir">${where ? '바꾸기' : '📁 문서 폴더 고르기'}</button>${where ? '<button class="btn ghost xs" data-act="hm-clear-dir" title="다운로드 폴더에 저장하도록 되돌립니다">해제</button>' : ''}
           </div>
           ${where ? `<div class="hm-tree">
             <div class="t1">${I.folder}<b>${h(where)}</b></div>
             ${[1, 2, 3].map((g) => `<div class="t2">${I.folder}<b>${g}학년 자동저장</b><span class="t-last" data-tree-g="${g}"><span class="muted">${g}학년_날짜_시간.json</span></span></div>`).join('')}
           </div>
-          <p class="hint hm-path">학년 작업이 바뀔 때마다 그 학년 폴더에 <b>N학년_날짜_시간.json</b>으로 저장합니다. (10분에 한 파일 · 학년마다 최근 100개 유지 · [저장] 버튼 파일은 끝에 '_저장')<br>브라우저 보안상 고른 폴더의 앞쪽 경로(C:\\… 등)는 알 수 없어, 고른 폴더 이름부터 표시합니다.</p>` : '<p class="hint hm-path">폴더를 고르면 그 안에 작업파일 폴더와 1·2·3학년 자동저장 폴더를 만들어 자동으로 저장합니다.</p>'}`
+          <p class="hint hm-path">학년 작업이 바뀔 때마다 그 학년 폴더에 <b>N학년_날짜_시간.json</b>으로 저장합니다. (10분에 한 파일 · 학년마다 최근 100개 유지 · [저장] 버튼 파일은 끝에 '_저장')<br>브라우저 보안상 고른 폴더의 앞쪽 경로(C:\\… 등)는 알 수 없어, 고른 폴더 이름부터 표시합니다.</p>` : '<p class="hint hm-path">기본 저장 위치는 <b>문서 › 고사프로그램데이터</b>입니다. [📁 문서 폴더 고르기]를 누르면 문서 폴더가 열리니 그대로 <b>[폴더 선택]</b>을 누르세요. 그 안에 고사프로그램데이터 폴더와 1·2·3학년 자동저장 폴더를 만들어 저장합니다.</p>'}`
           : '<p class="hint hm-path">이 브라우저는 폴더 지정을 지원하지 않아 다운로드 폴더에 저장됩니다. (크롬·엣지에서 가능)</p>'}
         </section>
 

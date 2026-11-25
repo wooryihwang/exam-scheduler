@@ -95,6 +95,8 @@
   let saveDir = null;
   const saveDirLoaded = kv('readonly', (s) => s.get('saveDir')).then((x) => { saveDir = x || null; }).catch(() => {});
   const safeFolder = (s) => String(s || '').replace(/[\\/:*?"<>|]/g, '').trim();
+  // [폴더 이름]: 고른 폴더가 바로 그 폴더(예: 문서 안의 고사프로그램데이터)면 한 번 더 만들지 않음
+  const mainFolder = () => { const f = safeFolder(window.Store && Store.saveFolder ? Store.saveFolder() : ''); return saveDir && f && saveDir.name === f ? '' : f; };
   U.saveDir = {
     supported: typeof window.showDirectoryPicker === 'function',
     loaded: saveDirLoaded,
@@ -105,7 +107,7 @@
     /** 저장 위치 안내 글자: '문서\\고사시간표 작업파일' (+ '\\1학년') */
     where: (sub2) => {
       if (!saveDir) return '';
-      const parts = [saveDir.name, safeFolder(window.Store && Store.saveFolder ? Store.saveFolder() : ''), safeFolder(sub2)].filter(Boolean);
+      const parts = [saveDir.name, mainFolder(), safeFolder(sub2)].filter(Boolean);
       return parts.join('\\');
     },
     /** 폴더 자동 저장 상태 (main.js 가 채움): perm 'granted'|'prompt'|'denied'|'none', last 마지막 저장 시각 */
@@ -132,7 +134,8 @@
       return old.length;
     },
     async pick() {
-      const hd = await window.showDirectoryPicker({ id: 'exam-save', mode: 'readwrite' });
+      // 처음에는 '문서' 폴더에서 열림 → 문서를 고르면 그 안에 [고사프로그램데이터] 폴더를 만들어 저장
+      const hd = await window.showDirectoryPicker({ id: 'exam-save', mode: 'readwrite', startIn: 'documents' });
       saveDir = hd;
       try { await kv('readwrite', (s) => s.put(hd, 'saveDir')); } catch (e) { /* 기억 못 해도 이번 실행에서는 씀 */ }
       return hd.name;
@@ -146,7 +149,7 @@
     try {
       if ((await saveDir.queryPermission({ mode: 'readwrite' })) !== 'granted') return null;
       let d = saveDir;
-      for (const part of [safeFolder(window.Store && Store.saveFolder ? Store.saveFolder() : ''), safeFolder(sub2)]) if (part) d = await d.getDirectoryHandle(part, { create });
+      for (const part of [mainFolder(), safeFolder(sub2)]) if (part) d = await d.getDirectoryHandle(part, { create });
       return d;
     } catch (e) { return null; }
   }
@@ -160,7 +163,7 @@
       U.saveDir.status.perm = perm;
       if (perm !== 'granted') return '';
       let d = saveDir;
-      for (const part of [safeFolder(window.Store && Store.saveFolder ? Store.saveFolder() : ''), safeFolder(sub2)]) if (part) d = await d.getDirectoryHandle(part, { create: true });
+      for (const part of [mainFolder(), safeFolder(sub2)]) if (part) d = await d.getDirectoryHandle(part, { create: true });
       const fh = await d.getFileHandle(name, { create: true });
       const w = await fh.createWritable(); await w.write(blob); await w.close();
       if (replace && replace !== name) { try { await d.removeEntry(replace); } catch (e) { /* 이미 없음 */ } }
