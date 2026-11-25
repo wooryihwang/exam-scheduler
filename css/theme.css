@@ -945,3 +945,8 @@ fieldset.lock-fs[disabled] [data-act="room-resync"], fieldset.lock-fs[disabled] 
 .tbl.rooms td.seat-lay { white-space: nowrap; color: #64748b; }
 .tbl.rooms .xs-num { width: 40px; padding: 3px 4px; text-align: center; margin: 0 2px; }
 .preview-more { text-align: center; margin: 8px 0 20px; }
+/* 출력 도구줄: 버튼이 화면 밖으로 밀리지 않게 (좁으면 다음 줄로) */
+.toolbar .out-bar { flex: 1 1 100%; max-width: 100%; box-sizing: border-box; }
+.out-bar .scope-radios { flex: 1 1 360px; }
+.out-bar > .btn { flex: none; white-space: nowrap; }
+.out-bar .scope-radio { white-space: normal; text-align: center; line-height: 1.25; }

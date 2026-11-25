@@ -533,7 +533,7 @@
     if (ui.scope === widest) return `<button class="btn primary sm print-all" data-act="out-print" title="이 탭의 모든 자료를 한 번에 프린터로 출력">🖨 전체 한 번에 출력${all ? ` (${all}쪽)` : ''}</button>`;
     const cur = pageCount(ui.scope);
     return `<button class="btn outline sm" data-act="out-print" title="고른 범위만 프린터로 출력">🖨 출력${cur ? ` (${cur}쪽)` : ''}</button>
-        <button class="btn primary sm print-all" data-act="out-print-all" title="범위와 관계없이 이 탭의 모든 자료를 한 번에 출력">🖨 전체 한 번에 출력${all ? ` (${all}쪽)` : ''}</button>`;
+        <button class="btn primary sm print-all" data-act="out-print-all" title="범위와 관계없이 이 탭의 모든 자료를 한 번에 출력">🖨 전체 출력${all ? ` (${all}쪽)` : ''}</button>`;
   }
   /** 라벨 '선택' 범위는 하나 이상 골라야 함 */
   const scopeReady = () => { if (ui.tab === 'label' && !labels().length) { U.toast('인쇄할 라벨이 없습니다.', 'error'); return false; } return true; };
