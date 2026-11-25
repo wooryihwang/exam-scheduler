@@ -1201,7 +1201,8 @@
   };
   /** 한 교시 자동 배치 전, 이 작업에서 처음 한 번 띄워진 공간을 확인한다 → 계속하면 true */
   async function askGapsOnce() {
-    if (ui.gapAsked || st().options.autoMode !== 'rule') return true;
+    // 띄워진 공간을 이미 정했거나(고정 포함) 이번에 한 번 확인했으면 묻지 않음
+    if (ui.gapAsked || st().options.autoMode !== 'rule' || S.gapFixed() || (st().roomGaps || []).length) return true;
     const v = await U.modal({
       title: '먼저 띄워진 공간을 확인하세요', wide: true,
       body: GAP_HELP + '<div class="gap-box">' + gapStrip() + '</div>',
