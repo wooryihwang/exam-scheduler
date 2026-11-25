@@ -50,11 +50,17 @@
           <h3>${I.school}<span>기본 설정</span><span class="hm-sub">모든 학년 공통</span></h3>
           <div class="hm-row"><label class="hm-lbl">학교 이름</label><input class="input hm-input" data-change="hm-school" value="${h(S.school())}" placeholder="예) ○○고등학교" maxlength="40" title="모든 학년 출력물 머리에 인쇄됩니다"></div>
           <div class="hm-row"><label class="hm-lbl">폴더 이름</label><input class="input hm-input" data-change="hm-folder" value="${h(folder)}" placeholder="예) 고사시간표 작업파일" maxlength="40" title="저장 위치 안에 이 이름의 폴더를 만듭니다"></div>
-          ${dirOk ? `<div class="hm-row"><label class="hm-lbl">저장 위치</label>
-            <span class="hm-where ${where ? 'on' : ''}" title="${h(where)}">${where ? `${I.folder}<b>${h(where)}</b>` : '<span class="muted">고르지 않음 · 다운로드 폴더</span>'}</span>${state}
+          ${dirOk ? `<div class="hm-row top"><label class="hm-lbl">저장 위치</label>
+            <span class="hm-where full ${where ? 'on' : ''}">${where ? `${I.folder}<b>${h(where)}</b>` : '<span class="muted">고르지 않음 · 다운로드 폴더에 저장</span>'}</span>
+          </div>
+          <div class="hm-row hm-row-btns"><span class="hm-lbl"></span>${state}
             <button class="btn outline xs" data-act="hm-pick-dir">${where ? '바꾸기' : '폴더 고르기'}</button>${where ? '<button class="btn ghost xs" data-act="hm-clear-dir" title="다운로드 폴더에 저장하도록 되돌립니다">해제</button>' : ''}
           </div>
-          <p class="hint hm-path">${where ? `${h(where)}\\<b>1학년</b>\\고사배치_1학년_자동저장.json` : '폴더를 고르면'} — 학년 작업이 바뀔 때마다 학년(1·2·3학년) 폴더에 자동 저장됩니다.</p>`
+          ${where ? `<div class="hm-tree">
+            <div class="t1">${I.folder}<b>${h(where)}</b></div>
+            ${[1, 2, 3].map((g) => `<div class="t2">${I.folder}<b>${g}학년 자동저장</b><span class="t-last" data-tree-g="${g}"><span class="muted">${g}학년_날짜_시간.json</span></span></div>`).join('')}
+          </div>
+          <p class="hint hm-path">학년 작업이 바뀔 때마다 그 학년 폴더에 <b>N학년_날짜_시간.json</b>으로 저장합니다. (10분에 한 파일 · 학년마다 최근 100개 유지 · [저장] 버튼 파일은 끝에 '_저장')<br>브라우저 보안상 고른 폴더의 앞쪽 경로(C:\\… 등)는 알 수 없어, 고른 폴더 이름부터 표시합니다.</p>` : '<p class="hint hm-path">폴더를 고르면 그 안에 작업파일 폴더와 1·2·3학년 자동저장 폴더를 만들어 자동으로 저장합니다.</p>'}`
           : '<p class="hint hm-path">이 브라우저는 폴더 지정을 지원하지 않아 다운로드 폴더에 저장됩니다. (크롬·엣지에서 가능)</p>'}
         </section>
 
@@ -68,14 +74,58 @@
           </div>
         </section>
       </div>
+      ${outCard()}
     </div>`;
+  }
+
+  // ---------------------------------------------------------------- 출력 설정 (예전 [설정] 창 내용, 모든 학년에 적용)
+  const OUT_OPTS = [
+    ['secLabel', '분반 이름 표기', '학생 배치·고사실 시간표', [['num', '1반 · 2반'], ['neis', '편성현황 그대로'], ['ganada', '가반 · 나반'], ['abc', 'A반 · B반'], ['none', '표시 안 함']]],
+    ['seatOrder', '좌석표 번호 순서', '', [['col', '세로 먼저'], ['row', '가로 먼저']]],
+    ['seatList', '좌석표 모양', '', [[true, '좌석 + 명렬'], [false, '좌석만']]],
+    ['labelStyle', '봉투 라벨', '', [['big', 'A · 과목 크게'], ['table', 'B · 표']]],
+    ['paper', '전체 시간표 용지', '', [['A4', 'A4'], ['B4', 'B4']]],
+    ['slipSeat', '학생별 시간표', '', [[true, '좌석번호 표시'], [false, '좌석번호 숨김']]],
+    ['slipNoteOn', '하단 유의사항', '학생별 시간표', [[true, '인쇄'], [false, '인쇄 안 함']]],
+  ];
+  function outCard() {
+    const o = S.state.out || {};
+    const item = ([k, label, sub, opts]) => `<div class="hm-opt ${k === 'secLabel' ? 'wide' : ''}"><div class="hm-opt-l">${h(label)}${sub ? `<small>${h(sub)}</small>` : ''}</div>
+      <div class="hm-seg">${opts.map(([v, l]) => `<button class="${o[k] === v ? 'on' : ''}" data-act="hm-out" data-k="${k}" data-v="${String(v)}">${h(l)}</button>`).join('')}</div></div>`;
+    return `<section class="card hm-card hm-out" id="hm-out">
+      <h3>${ico('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>')}<span>출력 설정</span><span class="hm-sub">모든 학년에 적용 · 10. 출력물에서 학년마다 따로 바꿀 수도 있음</span></h3>
+      <div class="hm-opts">${OUT_OPTS.map(item).join('')}</div>
+      <p class="hint hm-path">저장 기록: 사이드바의 <b>저장 기록</b>에서 자동·수동 저장한 시점으로 되돌릴 수 있습니다.</p>
+    </section>`;
+  }
+
+  /** 학년 폴더의 최근 저장 파일 이름과 개수를 채운다 (폴더를 읽어야 해서 그린 뒤에) */
+  let treeSeq = 0;
+  async function fillTree() {
+    const seq = ++treeSeq;
+    if (!U.saveDir.has() || !Views.folder) return;
+    for (const g of [1, 2, 3]) {
+      const p = S.projectOfGrade(g);
+      const names = p ? await U.saveDir.list(Views.folder.autoFolder(p)) : null;
+      if (seq !== treeSeq) return;
+      const el = document.querySelector(`[data-tree-g="${g}"]`);
+      if (!el) continue;
+      if (names && names.length) el.innerHTML = `<span class="t-file">${h(names[0])}</span><span class="muted"> 외 ${names.length - 1}개</span>`.replace('<span class="muted"> 외 0개</span>', '');
+      else el.innerHTML = '<span class="muted">아직 저장한 파일 없음</span>';
+    }
   }
 
   const home = {
     id: 'home', no: 0, title: '첫 화면',
     status: () => false,
-    render,
+    render() { setTimeout(fillTree, 0); return render(); },
     actions: {
+      'hm-out'(el) {
+        const k = el.dataset.k, raw = el.dataset.v, v = raw === 'true' ? true : raw === 'false' ? false : raw;
+        S.setOutAll(k, v);
+        if (Views.folder) Views.folder.saveAll();
+        U.toast('모든 학년에 적용했습니다.', 'ok');
+      },
       async 'hm-pick-dir'() {
         try {
           await U.saveDir.pick();

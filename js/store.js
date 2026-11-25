@@ -905,6 +905,15 @@
     // ------------------------------------------------ 기타
     set(field, v) { state[field] = v; commit(); },
     setOut(k, v) { state.out[k] = v; commit(); },
+    /** 출력 설정을 모든 학년 작업 공간에 같이 적용 (첫 화면) */
+    setOutAll(k, v) {
+      for (const p of index.list) {
+        if (p.id === index.current) continue;
+        const x = readJSON(pKey(p.id));
+        if (x) { x.out = { ...(x.out || {}), [k]: v }; writeJSON(pKey(p.id), x); }
+      }
+      state.out[k] = v; commit();
+    },
     defaultSlipNote: DEFAULT_SLIP_NOTE,
     /** 분반 이름 표기 (출력 설정 secLabel): 1반 | 편성현황 그대로 | 가나다 | ABC | 안 씀 */
     secName(x) {

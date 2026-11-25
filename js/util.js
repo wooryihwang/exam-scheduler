@@ -102,7 +102,6 @@
     name: () => (saveDir ? saveDir.name : ''),
     /** 저장 폴더를 골라 두었는가 */
     has: () => !!saveDir,
-    /** 저장 위치 안내 글자: '문서\고사시간표 작업파일' */
     /** 저장 위치 안내 글자: '문서\\고사시간표 작업파일' (+ '\\1학년') */
     where: (sub2) => {
       if (!saveDir) return '';
@@ -115,7 +114,23 @@
     /** 사용자가 누른 순간에만 부를 수 있음 (브라우저 권한 창) */
     async request() { await saveDirLoaded; if (!saveDir) return 'none'; try { return await saveDir.requestPermission({ mode: 'readwrite' }); } catch (e) { return 'denied'; } },
     /** 자동 저장용: 권한이 이미 있을 때만 조용히 쓴다. 성공하면 저장 위치 글자 */
-    writeAuto: (name, data, sub2) => writeToSaveDir(name, data instanceof Blob ? data : new Blob([data], { type: 'application/json' }), sub2, false),
+    writeAuto: (name, data, sub2, replace) => writeToSaveDir(name, data instanceof Blob ? data : new Blob([data], { type: 'application/json' }), sub2, false, replace),
+    /** 학년 폴더 안의 파일 이름들 (최근 것부터). 권한이 없거나 폴더가 없으면 null */
+    async list(sub2) {
+      const d = await subDir(sub2, false); if (!d) return null;
+      const names = [];
+      try { for await (const [n, hd] of d.entries()) if (hd.kind === 'file' && /\.json$/i.test(n)) names.push(n); } catch (e) { return null; }
+      return names.sort().reverse();
+    },
+    /** 학년 폴더에서 pattern 에 맞는 파일을 최근 keep 개만 남기고 지운다 (자동 저장 파일만) */
+    async prune(sub2, pattern, keep) {
+      const d = await subDir(sub2, false); if (!d) return 0;
+      const names = [];
+      try { for await (const [n, hd] of d.entries()) if (hd.kind === 'file' && pattern.test(n)) names.push(n); } catch (e) { return 0; }
+      const old = names.sort().reverse().slice(keep);
+      for (const n of old) { try { await d.removeEntry(n); } catch (e) { /* 무시 */ } }
+      return old.length;
+    },
     async pick() {
       const hd = await window.showDirectoryPicker({ id: 'exam-save', mode: 'readwrite' });
       saveDir = hd;
@@ -124,8 +139,19 @@
     },
     async clear() { saveDir = null; try { await kv('readwrite', (s) => s.delete('saveDir')); } catch (e) { /* 무시 */ } },
   };
-  /** 고른 폴더에 파일을 쓴다. 성공하면 저장 위치 글자, 아니면 '' */
-  async function writeToSaveDir(name, blob, sub2, ask = true) {
+  /** [고른 폴더]\[폴더 이름]\[sub2] 폴더 핸들 (권한이 이미 있을 때만). create 면 없으면 만든다 */
+  async function subDir(sub2, create) {
+    await saveDirLoaded;
+    if (!saveDir) return null;
+    try {
+      if ((await saveDir.queryPermission({ mode: 'readwrite' })) !== 'granted') return null;
+      let d = saveDir;
+      for (const part of [safeFolder(window.Store && Store.saveFolder ? Store.saveFolder() : ''), safeFolder(sub2)]) if (part) d = await d.getDirectoryHandle(part, { create });
+      return d;
+    } catch (e) { return null; }
+  }
+  /** 고른 폴더에 파일을 쓴다. replace: 새로 쓴 뒤 지울 예전 파일 이름. 성공하면 저장 위치 글자, 아니면 '' */
+  async function writeToSaveDir(name, blob, sub2, ask = true, replace = '') {
     await saveDirLoaded;
     if (!saveDir) return '';
     try {
@@ -137,6 +163,7 @@
       for (const part of [safeFolder(window.Store && Store.saveFolder ? Store.saveFolder() : ''), safeFolder(sub2)]) if (part) d = await d.getDirectoryHandle(part, { create: true });
       const fh = await d.getFileHandle(name, { create: true });
       const w = await fh.createWritable(); await w.write(blob); await w.close();
+      if (replace && replace !== name) { try { await d.removeEntry(replace); } catch (e) { /* 이미 없음 */ } }
       U.saveDir.status.last = Date.now();
       return U.saveDir.where(sub2);
     } catch (e) { return ''; }

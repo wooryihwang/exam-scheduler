@@ -122,8 +122,12 @@
     if (!json) return;
     const d = new Date();
     const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
-    U.saveWork(`고사배치_${p.name}_${stamp}.json`, json, gradeFolder(p));
+    U.saveWork(`${gradeFolder(p)}_${stamp}_저장.json`, json, autoFolder(p));
   }
+  /** 저장 시각 글자: 20261125_0905 */
+  function stampNow() { const d = new Date(), p2 = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}_${p2(d.getHours())}${p2(d.getMinutes())}`; }
+  /** 학년 저장 폴더: '1학년 자동저장' */
+  function autoFolder(p) { return `${gradeFolder(p)} 자동저장`; }
   /** 저장 폴더 안의 학년 폴더 이름: '1학년' (작업 공간 이름) */
   function gradeFolder(p) { return String((p && p.name) || '작업').replace(/[\\/:*?"<>|]/g, '').trim() || '작업'; }
 
@@ -140,16 +144,26 @@
     clearTimeout(folderTimer);
     folderTimer = setTimeout(flushFolder, 3000);
   }
+  // 자동 저장 파일: [N학년 자동저장]\N학년_날짜_시간.json. 바뀔 때마다 쓰되, 10분 안에는 새 파일을 늘리지 않고
+  // 가장 최근 파일을 지금 시각 이름으로 바꿔 쓴다(10분에 하나꼴). 학년마다 자동 저장 파일은 최근 100개만 남긴다.
+  const AUTO_GAP = 10 * 60 * 1000, AUTO_KEEP = 100;
+  const lastAuto = {};
   async function flushFolder() {
     const ids = [...folderPending]; folderPending.clear();
     let wrote = false;
     for (const id of ids) {
       const p = S.projects().find((x) => x.id === id); if (!p) continue;
       const json = S.projectJSON(id); if (!json) continue;
-      const w = await U.saveDir.writeAuto(`고사배치_${gradeFolder(p)}_자동저장.json`, json, gradeFolder(p));
-      if (w) wrote = true; else folderPending.add(id);
+      const name = `${gradeFolder(p)}_${stampNow()}.json`, prev = lastAuto[id];
+      const replace = prev && Date.now() - prev.t < AUTO_GAP ? prev.name : '';
+      const w = await U.saveDir.writeAuto(name, json, autoFolder(p), replace);
+      if (w) {
+        wrote = true;
+        lastAuto[id] = { name, t: replace ? prev.t : Date.now() };
+        if (!replace) { const g = gradeFolder(p) + '_'; U.saveDir.prune(autoFolder(p), { test: (n) => n.startsWith(g) && /^\d{8}_\d{4}\.json$/.test(n.slice(g.length)) }, AUTO_KEEP); }
+      } else folderPending.add(id);
     }
-    if (wrote || ids.length) renderNav();
+    if (wrote || ids.length) { renderNav(); if (current === 'home' && wrote) render(); }
   }
   /** 모든 학년(자료가 있는 것)을 지금 폴더에 저장 */
   function saveAllToFolder() { S.projects().forEach((p) => { if (S.projectHasRows(p.id)) folderPending.add(p.id); }); clearTimeout(folderTimer); return flushFolder(); }
@@ -157,13 +171,13 @@
     folderAsked = true;
     const perm = await U.saveDir.request();
     U.saveDir.status.perm = perm;
-    if (perm === 'granted') { await saveAllToFolder(); U.toast(`저장 폴더(${U.saveDir.where()})에 자동 저장합니다.`, 'ok'); }
+    if (perm === 'granted') { clearTimeout(folderTimer); await flushFolder(); U.toast(`저장 폴더(${U.saveDir.where()})에 자동 저장합니다.`, 'ok'); }
     render();
     return perm;
   }
-  V.folder = { queue: queueFolderSave, saveAll: saveAllToFolder, grant: grantFolder, gradeFolder };
+  V.folder = { queue: queueFolderSave, saveAll: saveAllToFolder, grant: grantFolder, gradeFolder, autoFolder };
   S.subscribe(() => queueFolderSave());
-  U.saveDir.loaded.then(async () => { U.saveDir.status.perm = await U.saveDir.permission(); render(true); if (U.saveDir.status.perm === 'granted') saveAllToFolder(); });
+  U.saveDir.loaded.then(async () => { U.saveDir.status.perm = await U.saveDir.permission(); render(true); });
   // 권한이 아직이면, 저장할 것이 생긴 뒤 화면을 처음 누를 때 한 번 묻는다
   document.addEventListener('pointerdown', () => {
     if (folderAsked || !U.saveDir.has() || U.saveDir.status.perm === 'granted' || !folderPending.size) return;
@@ -274,6 +288,8 @@
       U.toast('설정을 저장하였습니다.', 'ok');
     },
     'folder-grant'() { grantFolder(); },
+    /** 설정: 첫 화면 아래쪽 출력 설정으로 */
+    'go-settings'() { go('home'); requestAnimationFrame(() => { const el = document.getElementById('hm-out'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1200); } }); },
     /** 첫 화면: N학년 초기화 / 전체 초기화 → 별도 고사실 학생(3학년·전체는 위탁학생도)을 유지할지 묻고 처리 */
     async 'reset-ask'(el) {
       const g = el.dataset.g, all = g === 'all';
@@ -316,7 +332,7 @@
       if (!S.state.rows.length) return U.toast('저장할 데이터가 없습니다.', 'error');
       const d = new Date();
       const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
-      U.saveWork(`고사배치_${S.currentProject().name}_${stamp}.json`, S.exportJSON(), gradeFolder(S.currentProject()));
+      U.saveWork(`${gradeFolder(S.currentProject())}_${stamp}_저장.json`, S.exportJSON(), autoFolder(S.currentProject()));
     },
     /** 첫 화면: 작업 파일 내려받기 (한 학년 / 모든 학년) */
     'dl-project'(el) {
