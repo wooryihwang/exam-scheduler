@@ -1163,6 +1163,23 @@
         moves[studentKey(s.ban, s.num)] = to.i;
         moved++;
       }
+      // [인원 맞추기] 누를 때: 자습실(대기실) 인원을 골고루 (예: 24·10·24·24·28 → 22씩). 받는 교실의 반 학생을 먼저 옮김
+      if (ctx.even && list.length > 1 && list[0] && list[0].kind === 'wait') {
+        const total = list.reduce((t, x) => t + x.list.length, 0);
+        for (let guard = 0; guard < total; guard++) {
+          // 가장 적은 교실(빈자리 있음) ← 가장 많은 교실, 차이가 2명 이상일 때만
+          const to = list.filter((x) => x.list.length < cap(x.i)).sort((a, b) => a.list.length - b.list.length || a.i - b.i)[0];
+          const from = list.slice().sort((a, b) => b.list.length - a.list.length || a.i - b.i)[0];
+          if (!to || !from || from === to || from.list.length - to.list.length < 2) break;
+          let k = -1;
+          for (let j = from.list.length - 1; j >= 0; j--) if (from.list[j].ban === rooms[to.i].ban) { k = j; break; }
+          if (k < 0) k = from.list.length - 1;
+          const [s] = from.list.splice(k, 1);
+          to.list.push(s);
+          moves[studentKey(s.ban, s.num)] = to.i;
+          moved++;
+        }
+      }
       // 추가 고사장이 있는 과목: 그 과목 시험실과 추가 고사장의 인원을 골고루 (예: 27·30·0 → 19·19·19)
       const mores = list.filter((x) => x.more);
       if (mores.length && list[0] && list[0].kind !== 'wait') {

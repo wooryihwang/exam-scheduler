@@ -160,6 +160,20 @@ t('좌석 맞추기: 빈 교실로 정해 둔 교실은 쓰지 않음', () => {
   const fitted = C.refitSections(cells, small, sbMap, info, null, { useWait: false });
   small.forEach((r, i) => { if (cells[i] === C.VOID_CELL) assert.strictEqual(fitted[i], C.VOID_CELL, `${r.name} 빈 교실 유지`); });
 });
+t('인원 맞추기: 자습실(대기실) 인원을 골고루', () => {
+  const ctx0 = { rooms: rooms.map((r) => ({ ...r, cap: 40 })), sbMap, students, idx: C.studentIndex(rows), waitMode: 'class' };
+  let checked = 0;
+  for (const sl of C.placeSlots(tt)) {
+    const info = C.slotInfo(sl, students, subjectClasses);
+    const cells = C.autoPlaceSlot(sl, [], { rooms: ctx0.rooms, sbMap, info }, false, 'rule');
+    const b = C.balanceMoves({ ...ctx0, even: true }, sl, cells);
+    const ns = [...C.slotRoster(ctx0, sl, cells, b.moves).rooms.values()].filter((x) => x.kind === 'wait').map((x) => x.list.length);
+    if (ns.length < 2) continue;
+    assert.ok(Math.max(...ns) - Math.min(...ns) <= 1, sl.key + ' ' + JSON.stringify(ns));
+    checked++;
+  }
+  assert.ok(checked > 0, '자습실이 2개 이상인 교시가 있어야 함');
+});
 t('추가 고사장: 정원 초과 학생을 받아 옴', () => {
   const sl = C.examSlots(tt).find((x) => x.key === '1_3');
   const small = rooms.map((r) => ({ ...r, cap: C.isClassRoom(r) ? 25 : r.cap }));

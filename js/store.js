@@ -1110,11 +1110,11 @@
    * 고사실 배치가 바뀐 회차의 정원 맞추기: 정원을 넘는 인원을 같은 과목 시험실(자습실끼리)의 빈자리로 자동 이동.
    * 그 회차의 학생 이동 내역은 새로 계산한 것으로 바꾼다. → { moved, unresolved }
    */
-  function rebalance(slotKey) {
+  function rebalance(slotKey, even = false) {
     const slot = C.placeSlots(state.timetable).find((x) => x.key === slotKey);
     if (!slot) return { moved: 0, unresolved: [] };
     cache.clear();
-    const ctx = { rooms: state.rooms, sbMap: C.subjectBanMap(state.subjectClasses), students: S.students(), idx: C.studentIndex(state.rows), waitMode: state.options.waitMode, locked: S.cellLockSet(slotKey), prevMoves: (state.moves || {})[slotKey] || {} };
+    const ctx = { rooms: state.rooms, sbMap: C.subjectBanMap(state.subjectClasses), students: S.students(), idx: C.studentIndex(state.rows), waitMode: state.options.waitMode, locked: S.cellLockSet(slotKey), prevMoves: (state.moves || {})[slotKey] || {}, even };
     const r = C.balanceMoves(ctx, slot, S.cells(slotKey));
     if (r.moved) state.moves[slotKey] = r.moves; else delete state.moves[slotKey];
     return r;
@@ -1129,7 +1129,7 @@
       // 분반은 제자리에 두고(원반 유지) 자습 인원만 맞춘 뒤, 넘치는 학생만 같은 과목의 가까운 교실로 옮김
       w = C.fitWaits(S.cells(slotKey), state.rooms, info, true, L); state.placement[slotKey] = w.cells;
     }
-    const r = rebalance(slotKey);
+    const r = rebalance(slotKey, true); // 버튼으로 누를 때는 자습실 인원도 골고루
     commit();
     return { ...r, waitAdded: w.added, waitRemoved: w.removed, waitShort: w.short };
   };
