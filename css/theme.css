@@ -936,3 +936,7 @@ fieldset.lock-fs[disabled] [data-act="room-resync"], fieldset.lock-fs[disabled] 
 .sidebar .nav-item { font-size: 15.5px; font-weight: 700; padding: 7px 12px; gap: 11px; border-radius: 9px; }
 .sidebar .nav-item .nav-ico svg { width: 19px; height: 19px; }
 .sidebar .nav-sec.reports { margin-top: 8px; padding-top: 10px; }
+/* 출력물: 전체 한 번에 출력 */
+.btn.print-all { font-weight: 800; }
+.preview-note { max-width: 860px; margin: 0 auto 12px; padding: 8px 14px; border-radius: 10px; background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; font-size: 13.5px; text-align: center; }
+@media print { .preview-note { display: none; } }

@@ -511,10 +511,27 @@
         <div class="scope-radios" role="radiogroup" aria-label="저장·출력 범위"><span class="scope-label">범위</span>${scopes.slice().reverse().map(([k, l]) => `<label class="scope-radio ${k === ui.scope ? 'on' : ''}"><input type="radio" name="o-scope" value="${k}" data-change="o-scope" ${k === ui.scope ? 'checked' : ''}><span>${h(l)}</span></label>`).join('')}</div>
         <button class="btn outline sm" data-act="out-excel" title="표를 엑셀 파일로 저장 (쪽마다 시트 하나)">📊 엑셀 저장</button>
         <button class="btn outline sm" data-act="out-pdf" title="A4 쪽 그대로 PDF 파일로 저장">📄 PDF 저장</button>
-        <button class="btn primary sm" data-act="out-print" title="프린터로 출력">🖨 출력</button>
+        ${printPair(scopes)}
       </div>`;
     const scopeLabel = (scopes.find(([k]) => k === ui.scope) || scopes[0])[1];
     return { ctrl, preview, printBtns: outBar, scopeLabel };
+  }
+  /** 범위별 쪽수 (그릴 때마다 다시 세지 않게 자료가 바뀔 때만) */
+  const pageCount = (scope) => {
+    const key = `${S.rev}|${ui.tab}|${scope}|${ui.slot}|${ui.room}|${ui.ban}|${ui.day}|${ui.stu}|${ui.indMode}|${ui.spMode}`;
+    ui.pc = ui.pc || {};
+    if (!(key in ui.pc)) { try { ui.pc[key] = (printHtml(scope).match(/class="page[\s"]/g) || []).length; } catch (e) { ui.pc[key] = 0; } }
+    return ui.pc[key];
+  };
+  /** [출력](고른 범위) + [전체 한 번에 출력](가장 넓은 범위) — 범위가 같으면 하나만 */
+  function printPair(scopes) {
+    const widest = scopes[scopes.length - 1][0];
+    ui.widest = widest;
+    const all = pageCount(widest);
+    if (ui.scope === widest) return `<button class="btn primary sm print-all" data-act="out-print" title="이 탭의 모든 자료를 한 번에 프린터로 출력">🖨 전체 한 번에 출력${all ? ` (${all}쪽)` : ''}</button>`;
+    const cur = pageCount(ui.scope);
+    return `<button class="btn outline sm" data-act="out-print" title="고른 범위만 프린터로 출력">🖨 출력${cur ? ` (${cur}쪽)` : ''}</button>
+        <button class="btn primary sm print-all" data-act="out-print-all" title="범위와 관계없이 이 탭의 모든 자료를 한 번에 출력">🖨 전체 한 번에 출력${all ? ` (${all}쪽)` : ''}</button>`;
   }
   /** 라벨 '선택' 범위는 하나 이상 골라야 함 */
   const scopeReady = () => { if (ui.tab === 'label' && !labels().length) { U.toast('인쇄할 라벨이 없습니다.', 'error'); return false; } return true; };
@@ -684,6 +701,11 @@
     setTimeout(() => window.print(), 50);
   }
 
+  /** 미리보기는 한 쪽만 보이므로, 출력하면 몇 쪽이 나오는지 알려 줌 */
+  function previewNote() {
+    const n = ui.widest ? pageCount(ui.widest) : 0;
+    return n > 1 ? `<div class="preview-note">미리보기는 한 쪽만 보입니다. <b>🖨 전체 한 번에 출력</b>을 누르면 이 탭의 자료 <b>${n}쪽</b>이 모두 출력됩니다.</div>` : '';
+  }
   const outputs = {
     id: 'outputs', no: 10, title: '인쇄 및 출력물',
     status: () => st().confirmed.seats,
@@ -696,11 +718,12 @@
       return `<div class="sticky-group">` + stepHead(10, (TABS.find(([k]) => k === ui.tab) || [])[1] || '인쇄 및 출력물', '고사 운영에 필요한 시간표와 명단을 미리 봅니다. 범위를 고른 뒤 <b>📊 엑셀 저장</b> · <b>📄 PDF 저장</b> · <b>🖨 출력</b> 중 하나를 누르세요.') +
         `<div class="tabs">${tabs().map(([k, l]) => `<button class="tab ${ui.tab === k ? 'on' : ''}" data-act="o-tab" data-tab="${k}">${h(l)}</button>`).join('')}</div>
         <div class="toolbar">${ctrl}<span class="spacer"></span>${printBtns}</div></div>
-        <div class="preview">${preview}</div>`;
+        <div class="preview">${previewNote()}${preview}</div>`;
     },
     actions: {
       'o-tab'(el) { ui.tab = el.dataset.tab; rerender(); },
       'out-print'() { if (!scopeReady()) return; doPrint(ui.scope); },
+      'out-print-all'() { if (!scopeReady()) return; doPrint(ui.widest || 'every'); },
       'out-excel'() { if (!scopeReady()) return; exportExcel(ui.scope, ui.scopeLabel); },
       'out-pdf'() { if (!scopeReady()) return; exportPdf(ui.scope, ui.scopeLabel); },
       'print-cur'() { doPrint('cur'); },
