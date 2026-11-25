@@ -274,6 +274,35 @@
       U.toast('설정을 저장하였습니다.', 'ok');
     },
     'folder-grant'() { grantFolder(); },
+    /** 첫 화면: N학년 초기화 / 전체 초기화 → 별도 고사실 학생(3학년·전체는 위탁학생도)을 유지할지 묻고 처리 */
+    async 'reset-ask'(el) {
+      const g = el.dataset.g, all = g === 'all';
+      const p = all ? null : S.projectOfGrade(+g);
+      if (!all && !p) return U.toast(`${g}학년 작업 공간이 아직 없습니다.`, 'error');
+      const withInd = all || g === '3';
+      const targets = all ? S.projects() : [p];
+      const withData = targets.filter((x) => S.projectHasRows(x.id));
+      const spN = targets.reduce((t, x) => t + S.projectSpecialCount(x.id), 0), indN = withInd ? S.industryList().length : 0;
+      const what = withInd ? '별도 고사실 학생과 위탁학생' : '별도 고사실 학생';
+      let save = withData.length > 0;
+      const v = await U.modal({
+        title: all ? '전체 초기화' : `${g}학년 초기화`,
+        body: `<p class="rs-q">${what}은 그대로 유지할까요?</p>
+          <p class="rs-now">지금 별도 고사실 <b>${spN}명</b>${withInd ? ` · 위탁학생 <b>${indN}명</b>` : ''}</p>
+          <ul class="hint-list"><li><b>유지하고 초기화</b>: 학생편성현황·시간표·배치 등은 지우고 ${what}은 남깁니다. 편성현황을 다시 불러오면 그대로 표시됩니다.</li>
+          <li><b>모두 초기화</b>: ${what}까지 모두 지웁니다.</li></ul>
+          ${withData.length ? '<label class="rs-save"><input type="checkbox" data-save checked> 초기화 전에 작업 파일 저장</label>' : ''}
+          <p class="hint danger-hint">※ ${all ? '1·2·3학년 모든 작업' : `${g}학년 작업`}이 지워지며 되돌릴 수 없습니다. 학교 이름·저장 폴더는 남습니다.</p>`,
+        buttons: [{ label: '취소', value: null }, { label: '모두 초기화', value: 'all', cls: 'danger-text ghost' }, { label: '유지하고 초기화', value: 'keep', cls: 'primary' }],
+        onMount(m) { m.addEventListener('change', (e) => { if (e.target.matches('[data-save]')) save = e.target.checked; }); },
+      });
+      if (!v) return;
+      const keep = v === 'keep';
+      if (save) withData.forEach((x) => downloadProject(x));
+      if (all) S.resetEverything({ keep }); else S.resetProject(p.id, { keep });
+      if (current !== 'home') go('roster'); else render();
+      U.toast(`${all ? '모든 학년' : `${g}학년`} 작업을 초기화하였습니다.${keep ? ` (${what}은 유지)` : ''}`, 'ok');
+    },
     'side-grade'(el) {
       const g = +el.dataset.g;
       // 첫 화면(모든 학년 공통)에서 학년을 고르면 그 학년 작업의 1단계로

@@ -3,7 +3,6 @@
   'use strict';
   const S = window.Store, h = U.esc;
   let rerender = () => {};
-  const ui = { keep: true };
 
   const ico = (d, w = 18) => `<svg viewBox="0 0 24 24" width="${w}" height="${w}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
   const I = {
@@ -28,7 +27,6 @@
       <span class="hm-gfile">${has ? h(file || '작업 있음') : '<span class="muted">비어 있음</span>'}${tags.length ? `<span class="hm-tags">${tags.map((x) => `<em>${h(x)}</em>`).join('')}</span>` : ''}</span>
       <span class="hm-gbtns">
         ${has ? `<button class="btn outline xs" data-act="dl-project" data-id="${h(p.id)}" title="${g}학년 작업 파일(JSON)을 저장 폴더에 저장합니다">${I.down} 저장</button>` : ''}
-        ${p ? `<button class="btn ghost xs danger-text" data-act="reset-grade" data-id="${h(p.id)}" data-keep="${ui.keep ? 1 : 0}" title="${g}학년 작업만 비웁니다">초기화</button>` : ''}
       </span>
     </div>`;
   }
@@ -89,15 +87,11 @@
 
         <section class="card hm-card wide hm-reset">
           <h3>${I.reset}<span>초기화</span><span class="hm-sub">새 시험을 시작하거나 처음부터 다시 할 때</span></h3>
-          <div class="hm-keep" role="radiogroup">
-            <label class="rs-opt keep ${ui.keep ? 'on' : ''}"><input type="radio" name="hm-keep" value="1" data-change="hm-keep" ${ui.keep ? 'checked' : ''}><b>위탁학생·별도 고사실 학생은 그대로 두고 초기화</b><span class="muted sm">편성현황을 다시 불러오면 그대로 표시됩니다</span></label>
-            <label class="rs-opt ${ui.keep ? '' : 'on'}"><input type="radio" name="hm-keep" value="0" data-change="hm-keep" ${ui.keep ? '' : 'checked'}><b>모두 초기화</b><span class="muted sm">위탁학생 명단·별도 고사실 지정까지 지웁니다</span></label>
+          <div class="hm-resets">
+            ${[1, 2, 3].map((g) => { const p = S.projectOfGrade(g); return `<button class="btn outline danger-text hm-rs g${g}" data-act="reset-ask" data-g="${g}" ${p ? '' : 'disabled title="아직 작업 공간이 없습니다"'}><i></i>${g}학년 초기화</button>`; }).join('')}
+            <button class="btn danger hm-rs" data-act="reset-ask" data-g="all">전체 초기화</button>
           </div>
-          <div class="hm-actions">
-            <button class="btn outline danger-text" data-act="reset-grade" data-keep="${ui.keep ? 1 : 0}">${I.reset} 학년별 초기화</button>
-            <button class="btn danger" data-act="reset-everything" data-keep="${ui.keep ? 1 : 0}">전체 초기화</button>
-          </div>
-          <p class="hint">학교 이름·저장 폴더·화면 설정은 초기화해도 남습니다. 초기화 전에 고르는 창에서 <b>파일 저장 후 초기화</b>도 할 수 있습니다.</p>
+          <p class="hint">누르면 <b>별도 고사실 학생</b>(3학년·전체는 <b>위탁학생</b>도)을 그대로 유지할지 묻습니다. 학교 이름·저장 폴더·화면 설정은 초기화해도 남습니다.</p>
         </section>
       </div>
     </div>`;
@@ -122,7 +116,6 @@
     change: {
       'hm-school'(el) { S.setSchool(el.value); U.toast('학교 이름을 저장하였습니다.', 'ok'); },
       'hm-folder'(el) { S.setSaveFolder(el.value); if (Views.folder) Views.folder.saveAll(); U.toast('폴더 이름을 저장하였습니다.', 'ok'); },
-      'hm-keep'(el) { ui.keep = el.value === '1'; rerender(); },
     },
   };
   Views.list.push(home);

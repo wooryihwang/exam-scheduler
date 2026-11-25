@@ -781,3 +781,15 @@ body[data-grade="3"] .page { --p-accent: #9b1c1c; }
 .hm-tree svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; color: #b45309; }
 .hm-tree .t2 { padding-left: 20px; }
 .hm-tree .muted { font-size: 12px; margin-left: 2px; }
+
+/* 첫 화면 초기화 버튼 */
+.hm-resets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+.hm-rs { justify-content: center; font-weight: 800; padding: 10px 8px; }
+.hm-rs i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; background: #94a3b8; }
+.hm-rs.g1 i { background: #22c55e; } .hm-rs.g2 i { background: #3b82f6; } .hm-rs.g3 i { background: #dc2626; }
+.btn.danger.hm-rs { background: #dc2626; border-color: #dc2626; color: #fff; }
+.btn.danger.hm-rs:hover { background: #b91c1c; }
+.rs-q { font-size: 17px; font-weight: 800; margin: 2px 0 6px; }
+.rs-now { margin: 0 0 8px; color: #475569; }
+.rs-save { display: inline-flex; align-items: center; gap: 6px; margin: 6px 0 4px; font-weight: 700; cursor: pointer; }
+@media (max-width: 760px) { .hm-resets { grid-template-columns: 1fr 1fr; } }
