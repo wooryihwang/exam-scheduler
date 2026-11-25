@@ -254,6 +254,18 @@
     p.name = name;
   }
 
+  /** 고사장 띄우기 고정: 지금 띄운 곳을 교실 이름으로 저장 / 이름으로 다시 적용 */
+  function saveGapFix() {
+    const g = S.currentGrade(); if (!g) return;
+    const names = (state.roomGaps || []).map((i) => state.rooms[i] && state.rooms[i].name).filter(Boolean);
+    index.gapFix = { ...(index.gapFix || {}), [g]: names };
+    writeJSON(INDEX_KEY, index);
+  }
+  function applyGapFix() {
+    const names = S.gapFixed(); if (!names) return;
+    state.roomGaps = names.map((n) => state.rooms.findIndex((r) => r.name === n)).filter((i) => i >= 0).sort((a, b) => a - b);
+  }
+
   /** 파생 데이터 메모이제이션 (상태 변경 시 초기화) */
   function memo(name, fn) { if (!cache.has(name)) cache.set(name, fn()); return cache.get(name); }
 
@@ -417,6 +429,7 @@
       state = Object.assign(blank(), keep, { rows, fileName });
       if (keep.special) state.special = keep.special;
       autoName();
+      applyGapFix();
       commit();
     },
     /**
@@ -491,6 +504,7 @@
         Object.assign(state.times, defaultTimes());
       }
       state.confirmed.roster = true;
+      applyGapFix();
       autoBackup('학생편성현황 확정');
       commit();
     },
@@ -782,7 +796,19 @@
     swapCells(slotKey, i, j) { if (S.isLocked(slotKey)) { U.toast('잠긴 교시입니다. 교시 이름 옆 🔒 을 눌러 잠금을 풀고 고치세요.', 'error'); return { moved: 0, unresolved: [] }; }
       if (S.isCellLocked(slotKey, i) || S.isCellLocked(slotKey, j)) { U.toast('잠긴 칸은 옮기거나 바꿀 수 없습니다. 칸 오른쪽 위 🔒 를 눌러 잠금을 푸세요.', 'error'); return { moved: 0, unresolved: [] }; } remember('pl', '고사실 맞바꾸기'); const c = S.cells(slotKey); [c[i], c[j]] = [c[j], c[i]]; state.placement[slotKey] = c; const b = rebalance(slotKey); commit(); return b; },
     /** 띄워진 공간 켜기/끄기 (i번째 고사실 오른쪽) */
-    toggleRoomGap(i) { remember('pl', '띄워진 공간'); const g = new Set(state.roomGaps); if (g.has(i)) g.delete(i); else g.add(i); state.roomGaps = [...g].sort((a, b) => a - b); commit(); },
+    toggleRoomGap(i) { remember('pl', '띄워진 공간'); const g = new Set(state.roomGaps); if (g.has(i)) g.delete(i); else g.add(i); state.roomGaps = [...g].sort((a, b) => a - b); if (S.gapFixed()) saveGapFix(); commit(); },
+    // ------------------------------------------------ 고사장 띄우기 고정 (학년별, 모든 시험 공통)
+    /** 지금 학년에 고정해 둔 띄우기: 그 뒤가 띄워진 교실 이름 목록, 고정 안 했으면 null */
+    gapFixed(g) { const k = g || S.currentGrade(); const m = index.gapFix || {}; return k && Array.isArray(m[k]) ? m[k] : null; },
+    /** 고정 켜기(지금 띄운 모양 그대로) / 끄기 */
+    setGapFix(on) {
+      const g = S.currentGrade(); if (!g) return;
+      if (on) saveGapFix(); else { index.gapFix = { ...(index.gapFix || {}) }; delete index.gapFix[g]; writeJSON(INDEX_KEY, index); }
+      commit();
+    },
+    clearGapFix(g) { index.gapFix = { ...(index.gapFix || {}) }; delete index.gapFix[g]; writeJSON(INDEX_KEY, index); commit(); },
+    /** 고정한 띄우기를 지금 교실 목록에 맞춰 다시 적용 (교실 이름으로 찾음) */
+    applyGapFix() { applyGapFix(); commit(); },
     clearSlot(slotKey) { if (S.isLocked(slotKey)) return U.toast('잠긴 교시입니다. 교시 이름 옆 🔒 을 눌러 잠금을 풀고 고치세요.', 'error'); remember('pl', '교시 배치 비우기'); delete state.moves[slotKey]; const L = S.cellLockSet(slotKey); state.placement[slotKey] = L.size ? S.cells(slotKey).map((v, i) => (L.has(i) ? v : '')) : []; if (L.size) rebalance(slotKey); commit(); },
     clearAllPlacement() {
       remember('pl', '배치 전체 삭제');

@@ -901,3 +901,12 @@ fieldset.lock-fs[disabled] [data-act="room-resync"], fieldset.lock-fs[disabled] 
 .lock-btn.on:hover { background: #b91c1c; }
 .btn .ico-lock.on { color: #dc2626; }
 .btn .ico-lock.off { color: #1d4ed8; }
+
+/* 고사장 띄우기 고정 */
+.tbl.pl th.pl-fix { min-width: 150px; text-align: center; vertical-align: middle; background: transparent; border: 0; }
+.btn.gap-fix { border: 1px dashed #94a3b8; background: #fff; color: #334155; font-weight: 800; white-space: nowrap; }
+.btn.gap-fix:hover { border-color: var(--navy); color: var(--navy); }
+.btn.gap-fix.on { border: 1px solid #b45309; background: #fffbeb; color: #92400e; }
+.hm-gapfix { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.hm-gf { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 9px; border-radius: 999px; background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; font-size: 12.5px; font-weight: 700; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-gf .chip-x { border: 0; background: none; color: #b45309; cursor: pointer; font-size: 11px; padding: 0 4px; }

@@ -255,6 +255,23 @@ const basicConfirmTest = () => t('기초정보·과목현황 확정은 따로 ·
   assert.strictEqual(S.state.confirmed.basic, true); assert.strictEqual(S.state.confirmed.list, true);
 });
 
+const gapFixTest = () => t('고사장 띄우기 고정: 초기화·다시 불러오기 뒤에도 같은 교실 뒤가 띄워짐', () => {
+  const rows3 = C.parseNeis(window.Sample.sampleAoa(3)).rows;
+  S.openGrade(3); S.importRows(rows3, 'g.xlsx'); S.confirmRoster();
+  const name = S.state.rooms[2].name;
+  S.toggleRoomGap(2); S.setGapFix(true);
+  assert.deepStrictEqual(S.gapFixed(3), [name]);
+  S.resetProject(S.currentProject().id);
+  assert.deepStrictEqual(S.state.roomGaps, []);
+  S.importRows(rows3, 'g2.xlsx'); S.confirmRoster();
+  assert.strictEqual(S.state.rooms[S.state.roomGaps[0]].name, name, '같은 교실 뒤가 다시 띄워짐');
+  // 고정 중에 띄우기를 바꾸면 고정도 따라 바뀜
+  S.toggleRoomGap(4);
+  assert.strictEqual(S.gapFixed(3).length, 2);
+  S.setGapFix(false); assert.strictEqual(S.gapFixed(3), null);
+  S.resetProject(S.currentProject().id);
+});
+
 const industryTest = () => t('위탁학생: 3학년에서만 · 표시 기억 · 연락 확인', () => {
   const rows3 = C.parseNeis(window.Sample.sampleAoa(3)).rows;
   // 1학년 작업에서는 기능이 꺼짐
@@ -314,4 +331,4 @@ const cellLockTest = () => t('학생 배치 칸 잠금: 자동 배치·인원 �
   assert.strictEqual(S.toggleCellLock(slot.key, i), false);
 });
 
-Promise.all(pending).then(() => { resetTest(); industryTest(); cellLockTest(); resetKeepTest(); basicConfirmTest(); console.log(`\n${pass}개 테스트 통과`); }).catch((e) => { console.error(e); process.exit(1); });
+Promise.all(pending).then(() => { resetTest(); industryTest(); cellLockTest(); resetKeepTest(); basicConfirmTest(); gapFixTest(); console.log(`\n${pass}개 테스트 통과`); }).catch((e) => { console.error(e); process.exit(1); });

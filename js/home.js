@@ -50,6 +50,7 @@
           <h3>${I.school}<span>기본 설정</span><span class="hm-sub">모든 학년 공통</span></h3>
           <div class="hm-row"><label class="hm-lbl">학교 이름</label><input class="input hm-input" data-change="hm-school" value="${h(S.school())}" placeholder="예) ○○고등학교" maxlength="40" title="모든 학년 출력물 머리에 인쇄됩니다"></div>
           <div class="hm-row"><label class="hm-lbl">폴더 이름</label><input class="input hm-input" data-change="hm-folder" value="${h(folder)}" placeholder="예) 고사시간표 작업파일" maxlength="40" title="저장 위치 안에 이 이름의 폴더를 만듭니다"></div>
+          <div class="hm-row"><label class="hm-lbl">띄우기 고정</label><span class="hm-gapfix">${[1, 2, 3].map((g) => { const fx = S.gapFixed(g); return fx ? `<span class="hm-gf g${g}" title="${h(fx.length ? fx.map((n) => n + ' 뒤').join(', ') : '띄운 곳 없음')}">📌 ${g}학년 ${fx.length ? h(fx.map((n) => n + '│').join(' ')) : '띄운 곳 없음'}<button class="chip-x" data-act="hm-gapfix-off" data-g="${g}" title="${g}학년 고정 풀기">✕</button></span>` : ''; }).join('') || '<span class="muted sm">고정 없음 · 7. 고사장·학생 배치 표 오른쪽 끝 [고사장 띄우기 고정]</span>'}</span></div>
           ${dirOk ? `<div class="hm-row top"><label class="hm-lbl">저장 위치</label>
             <span class="hm-where full ${where ? 'on' : ''}">${where ? `${I.folder}<b>${h(where)}</b>` : '<span class="muted">고르지 않음 · 다운로드 폴더에 저장</span>'}</span>
           </div>
@@ -135,6 +136,7 @@
           U.toast(`저장 폴더를 「${U.saveDir.where()}」로 정했습니다. 학년별 작업이 학년 폴더에 자동 저장됩니다.`, 'ok');
         } catch (e) { if (e && e.name !== 'AbortError') U.alert('폴더를 고르지 못했습니다: ' + (e.message || e)); }
       },
+      'hm-gapfix-off'(el) { S.clearGapFix(+el.dataset.g); U.toast(`${el.dataset.g}학년 고사장 띄우기 고정을 풀었습니다.`, 'ok'); },
       async 'hm-clear-dir'() { await U.saveDir.clear(); rerender(); U.toast('이제 다운로드 폴더에 저장합니다.', 'ok'); },
     },
     change: {

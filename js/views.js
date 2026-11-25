@@ -940,7 +940,7 @@
             const realOf = (base) => (counts && counts[i] != null ? counts[i] : base);
             if (c.type === 'exam') {
               const x = sb.get(c.key);
-              const over = x && capN > 0 && realOf(x.stuCount) > capN;
+              const over = x && capN > 0 && realOf(x.stuCount) > (C.cellCap(rooms[i], v, sb, info, cells) || capN);
               cls = `exam ${over ? 'over' : ''} ${x && slot.subjects.includes(x.subject) ? '' : 'bad'}`;
               inner = x ? `<div class="c-subj">${h(C.onlySubject(x.subject))}</div><div class="c-ban">${S.secName(x) && st().out.secLabel !== 'neis' ? `${h(S.secName(x))} · ` : ''}${h(C.roomLabel(x.room))}</div>${cnt(x.stuCount)}` : `<div class="c-subj">${h(v)}</div><div class="c-ban">오류</div>`;
             } else if (c.type === 'more') {
@@ -948,7 +948,7 @@
               inner = `<div class="c-subj">${h(C.onlySubject(c.subject))}</div><div class="c-ban">추가 고사장</div>${cnt(0)}`;
             } else if (c.type === 'home') {
               const base = C.homeSize(info, c.subject, c.ban);
-              cls = `exam home ${capN > 0 && realOf(base) > capN ? 'over' : ''}`;
+              cls = `exam home ${capN > 0 && realOf(base) > (C.cellCap(rooms[i], v, sb, info, cells) || capN) ? 'over' : ''}`;
               inner = `<div class="c-subj">${h(C.onlySubject(c.subject))}</div><div class="c-ban">${h(c.ban)} 학급 전체</div>${cnt(base)}`;
             } else if (c.type === 'wait') {
               const over = capN > 0 && realOf(c.count) > capN;
@@ -1010,7 +1010,7 @@
               const gap = gapAfter(i);
               const tgl = ui.gapEdit && !locked && k < usable.length - 1 ? `<button class="gap-tgl ${gap ? 'on' : ''}" data-act="pl-gap" data-i="${i}" title="${h(rooms[i].name)}와(과) ${h(rooms[usable[k + 1]].name)} 사이를 ${gap ? '붙이기' : '띄우기 (복도·계단 등으로 떨어져 있음)'}">${gap ? '⇤⇥' : '⇹'}</button>` : '';
               return `<th class="pl-room ${gap ? 'gap-after' : ''}"><div class="r-name">${h(rooms[i].name)}</div><div class="muted sm">${h(rooms[i].ban || (C.isExtraRoom(rooms[i]) ? '별도실' : ''))} · 최대 ${rooms[i].cap || '-'}명</div>${tgl}</th>`;
-            }).join('')}</tr></thead>
+            }).join('')}<th class="pl-fix">${(() => { const fx = S.gapFixed(); return `<button class="btn xs gap-fix ${fx ? 'on' : ''}" data-act="pl-gap-fix" title="${fx ? '고정을 풉니다. (지금 띄운 모양은 이 시험에 그대로 남음)' : '지금 띄운 고사장 모양을 이 학년의 기본으로 고정합니다. 초기화하거나 편성현황을 다시 불러와도 같은 곳이 띄워지고, 첫 화면에 표시됩니다.'}">📌 ${fx ? '띄우기 고정됨' : '고사장 띄우기 고정'}</button><div class="muted sm">${fx ? (fx.length ? `${fx.length}곳 고정` : '띄운 곳 없음') : '첫 화면에 표시'}</div>`; })()}</th></tr></thead>
             <tbody>${rowsHtml}</tbody>
           </table>
         </div>`);
@@ -1045,6 +1045,11 @@
       },
       'pl-gap-edit'() { ui.gapEdit = !ui.gapEdit; if (ui.gapEdit) U.toast('교실 이름 오른쪽의 ⇹ 를 누르면 그 사이가 띄워집니다. 다시 누르면 붙습니다.', 'ok'); rerender(); },
       'pl-gap'(el) { S.toggleRoomGap(+el.dataset.i); },
+      'pl-gap-fix'() {
+        const on = !S.gapFixed();
+        S.setGapFix(on);
+        U.toast(on ? `${S.currentGrade()}학년 고사장 띄우기를 고정했습니다. 초기화·다시 불러오기 뒤에도 같은 곳이 띄워집니다.` : '고사장 띄우기 고정을 풀었습니다.', 'ok');
+      },
       'pl-cell-lock'(el) {
         const on = S.toggleCellLock(el.dataset.k, +el.dataset.i);
         U.toast(on ? '이 칸을 잠갔습니다. 자동 배치·인원 맞추기·비우기를 해도 바뀌지 않습니다.' : '칸 잠금을 풀었습니다.', 'ok');

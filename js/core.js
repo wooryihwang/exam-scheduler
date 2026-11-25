@@ -427,6 +427,21 @@
    * 회차의 배치 현황과 상태 (7.학생배치 '계/배치/미배치' 및 오류 체크)
    * counts: 고사실별 실제 인원(학생 이동 반영). 주면 수용인원 검사에 사용
    */
+  /**
+   * 칸의 정원: 시험실은 그 분반(학급 전체) 인원까지는 정원 안으로 본다 — 분반은 나누지 않고 한 교실에서 본다.
+   * (교실 수용인원보다 큰 분반은 책상을 더 놓는 것으로 보고, 다른 분반 교실로 학생을 옮기지 않음)
+   */
+  function cellCap(room, v, sbMap, info, cells) {
+    const cap = Number(room && room.cap) || 0;
+    if (!cap) return 0;
+    const c = parseCell(v);
+    // 그 과목에 '추가 고사장'을 정해 두었으면 넘치는 학생을 그리로 옮기므로 교실 정원 그대로
+    if (cells && (c.type === 'exam' || c.type === 'home')) { const subj = c.type === 'exam' ? (sbMap && sbMap.get(c.key) || {}).subject : c.subject; if (hasMoreFor(cells, subj)) return cap; }
+    if (c.type === 'exam') { const sb = sbMap && sbMap.get(c.key); return sb ? Math.max(cap, sb.stuCount) : cap; }
+    if (c.type === 'home') return info ? Math.max(cap, homeSize(info, c.subject, c.ban) || 0) : cap;
+    return cap;
+  }
+  const hasMoreFor = (cells, subject) => !!subject && cells.some((x) => { const p = parseCell(x); return p.type === 'more' && p.subject === subject; });
   function slotPlacementStatus(slot, cells, info, sbMap, rooms, counts) {
     let bans = 0, exam = 0, wait = 0; const problems = [], warnings = [];
     const seen = new Set(), sectionSubj = new Set(), homeSubj = new Set();
@@ -458,7 +473,8 @@
         bans++; exam += sb.stuCount; n = sb.stuCount;
       }
       if (counts && counts[i] != null) n = counts[i];
-      if (room && Number(room.cap) > 0 && n > Number(room.cap)) warnings.push(`${room.name}: 최대 수용인원(${room.cap}명)을 초과하였습니다. (${n}명)`);
+      const capN = cellCap(room, v, sbMap, info, cells);
+      if (room && capN > 0 && n > capN) warnings.push(`${room.name}: 최대 수용인원(${capN}명)을 초과하였습니다. (${n}명)`);
     });
     for (const s of homeSubj) if (sectionSubj.has(s)) problems.push(`${onlySubject(s)}: 분반 배치와 학반별 배치를 함께 쓸 수 없습니다.`);
     // 배치해야 할 칸 수: 학반별로 배치한 과목은 응시생이 있는 반 수, 나머지는 분반 수
@@ -749,11 +765,9 @@
   function pickSegment(classIdx, gaps, pending, free, cap, back) {
     const segs = roomSegments(classIdx, gaps);
     if (segs.length < 2 || !pending.length) return null;
-    const need = pending.length, stu = pending.reduce((t, sb) => t + sb.stuCount, 0);
+    const need = pending.length;
     const fits = segs.map((seg, si) => ({ seg, si, fr: seg.filter(free) })).filter((x) => {
-      if (x.fr.length < need) return false;
-      const caps = x.fr.map((i) => cap(i) || Infinity).sort((a, b) => b - a).slice(0, need);
-      return caps.reduce((t, c) => t + c, 0) >= stu;
+      return x.fr.length >= need;
     });
     fits.sort((a, b) => a.fr.length - b.fr.length || (back ? b.si - a.si : a.si - b.si));
     return fits[0] || null;
@@ -849,13 +863,7 @@
       return cells;
     }
     const order = back ? classIdx.slice().reverse() : classIdx.slice();
-    // 교실 정원보다 큰 분반은 맞는 특별실로 먼저 (가장 작은 것부터)
-    const blockCap = Math.max(0, ...order.filter(free).slice(0, pending.length).map(cap));
-    for (const sb of pending.slice().sort((a, b) => b.stuCount - a.stuCount)) {
-      if (sb.stuCount <= blockCap) continue;
-      const fit = extraIdx.filter((i) => free(i) && cap(i) >= sb.stuCount).sort((a, b) => cap(a) - cap(b))[0];
-      if (fit != null) { cells[fit] = sb.key; pending.splice(pending.indexOf(sb), 1); }
-    }
+    // 분반은 교실 정원보다 조금 커도 앞(뒤) 학반 교실에 둔다 (특별실로 빼거나 학생을 나누지 않음)
     const examRooms = [];
     for (const i of order) { if (examRooms.length >= pending.length) break; if (free(i)) examRooms.push(i); }
     // 큰 분반을 큰 교실에 (같은 크기면 분반 순서대로)
@@ -993,8 +1001,9 @@
   function balanceMoves(ctx, slot, cells) {
     const { rooms } = ctx;
     const base = slotRoster(ctx, slot, cells, {});
-    const cap = (i) => Number(rooms[i].cap) || Infinity;
-    const groups = new Map(); // 같은 과목 시험실끼리, 자습실끼리 (잠긴 칸은 학생을 보내지도 받지도 않음)
+    // 시험실 정원은 그 분반 원래 인원(학생 이동 전) 이상 → 분반을 다른 교실로 나누지 않음
+    const cap = (i) => { const c = Number(rooms[i].cap) || Infinity, r = base.rooms.get(i), t = parseCell(cells[i]).type; return (t === 'exam' || t === 'home') && r && !hasMoreFor(cells, r.subject) ? Math.max(c, r.list.length) : c; };
+    const groups = new Map(); // 같은 과목 시험실끼리, 자습실끼리. 시험실 정원은 그 분반 인원 이상이라 분반 학생을 다른 교실로 나누지 않음 (잠긴 칸 제외)
     for (const [i, r] of base.rooms) {
       if (ctx.locked && ctx.locked.has(i)) continue;
       const g = r.kind === 'wait' ? 'wait' : 'exam:' + r.subject;
@@ -1044,7 +1053,7 @@
       if (st.status !== 'OK') add(null, `${STATUS_TEXT[st.status]} (응시 ${st.remainExam > 0 ? `${st.remainExam}명 미배치` : st.remainExam < 0 ? `${-st.remainExam}명 초과` : '완료'}, 자습 ${st.remainWait > 0 ? `${st.remainWait}명 미배치` : st.remainWait < 0 ? `${-st.remainWait}명 초과` : '완료'})`);
       ros.errors.forEach((m) => add(null, m.replace(`${slot.title} `, '').replace(`${slot.title}: `, '')));
       cells.forEach((v, i) => {
-        const c = parseCell(v), n = counts[i], cap = Number(rooms[i] && rooms[i].cap) || 0;
+        const c = parseCell(v), n = counts[i], cap = cellCap(rooms[i], v, sbMap, info, cells);
         if (c.type === 'empty' || c.type === 'void') return;
         if (cap && n != null && n > cap) add(i, `${rooms[i].name}: 최대 수용인원 ${cap}명을 ${n - cap}명 초과 (${n}명)`);
         if (c.type === 'more' && !n) add(i, `${rooms[i].name}: 비어 있는 추가 고사장 (학생 0명) — 지우거나 빈 교실로 바꾸세요`);
@@ -1337,7 +1346,7 @@
     parseNeis, buildBase, buildRooms, mergeRooms, isRoomUsable, isExtraRoom, isClassRoom,
     buildStudents, subjectStudentSets, canSameTime, findSameTimeCombos,
     ttCell, remainingSubjects, duplicateSubjects, candidateSubjects, dayDistribution, cellStatus, validateTimetable, autoTimetable,
-    subjectBanMap, examSlots, studySlots, placeSlots, slotInfo, parseCell, waitCell, homeCell, homeSize, moreCell, VOID_CELL, slotPlacementStatus, slotRoster, studentIndex, unplacedHomes, balanceMoves, placementIssues, unplacedBans, classNoOfRoom,
+    subjectBanMap, examSlots, studySlots, placeSlots, slotInfo, parseCell, waitCell, homeCell, homeSize, moreCell, VOID_CELL, slotPlacementStatus, cellCap, slotRoster, studentIndex, unplacedHomes, balanceMoves, placementIssues, unplacedBans, classNoOfRoom,
     autoPlaceSlot, fitWaits, roomsApart, roomSegments, pruneHistory, examTitleFor, HISTORY_MAX_BYTES, canUseExtra, buildSeating,
     assignSeatsInOrder, assignSeatsRandom, validateSeating, seatGrid,
     isProgramWorkbook, readProgram, stateFromProgram, seatKey, toISODate,

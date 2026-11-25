@@ -126,7 +126,7 @@ t('학반별 고사장 + 학생 강제 이동', () => {
   assert.deepStrictEqual(res.errors, []);
   assert.strictEqual(res.seating.find((x) => x.slot === '1_3' && x.ban === who.ban && x.num === who.num).roomIndex, 1);
 });
-t('정원 맞추기: 초과 인원을 같은 과목 고사실 빈자리로', () => {
+t('정원 맞추기: 분반(학급)은 교실 정원보다 커도 나누지 않음 · 다른 교실로 옮기지 않음', () => {
   const sl = C.examSlots(tt).find((x) => x.key === '1_3');
   const small = rooms.map((r) => ({ ...r }));
   small[0].cap = 25; // 1반 교실(29명)을 25석으로
@@ -134,12 +134,9 @@ t('정원 맞추기: 초과 인원을 같은 과목 고사실 빈자리로', () 
   const cells = small.map((r) => (C.isClassRoom(r) ? C.homeCell('공통국어1(4)', r.ban) : ''));
   const ctx = { rooms: small, sbMap, students, idx: C.studentIndex(rows), waitMode: 'class' };
   const b = C.balanceMoves(ctx, sl, cells);
-  assert.ok(b.moved === 4 && !b.unresolved.length, JSON.stringify(b));
-  // 빈자리가 없으면 해결하지 못한 초과로 알려 줌
-  const tight = rooms.map((r) => ({ ...r })); tight[0].cap = 25;
-  assert.strictEqual(C.balanceMoves({ ...ctx, rooms: tight }, sl, cells).unresolved[0].over, 4);
-  const r = C.slotRoster(ctx, sl, cells, b.moves);
-  for (const [i, x] of r.rooms) assert.ok(x.list.length <= (small[i].cap || Infinity), `${small[i].name} ${x.list.length}/${small[i].cap}`);
+  assert.ok(b.moved === 0 && !b.unresolved.length, JSON.stringify(b));
+  const info = C.slotInfo(sl, students, subjectClasses);
+  assert.strictEqual(C.slotPlacementStatus(sl, cells, info, sbMap, small).warnings.length, 0, '자기 분반만 있으면 정원 초과로 보지 않음');
 });
 t('추가 고사장: 정원 초과 학생을 받아 옴', () => {
   const sl = C.examSlots(tt).find((x) => x.key === '1_3');
