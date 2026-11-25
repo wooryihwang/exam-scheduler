@@ -1256,6 +1256,16 @@
    * 좌석 격자: 1번은 왼쪽 앞. order 'col' = 세로(한 열)로 먼저 채움, 'row' = 가로(앞줄)로 먼저 채움
    * fixedRows > 0 이면 줄 수를 고정 (열 × 줄 이 인원보다 적으면 오류)
    */
+  /** 수용인원으로 정하는 기본 책상 배치 [열(가로), 줄(세로)]: 24명 4×6, 28명 4×7, 30명 5×6, 그 밖에는 가까운 모양 */
+  function defaultSeatLayout(cap) {
+    const n = Number(cap) || 0;
+    if (n <= 0) return [5, 6];
+    if (n <= 24) return [4, Math.max(1, Math.ceil(n / 4))];
+    if (n <= 28) return [4, 7];
+    if (n <= 30) return [5, 6];
+    if (n <= 36) return [6, 6];
+    return [6, Math.ceil(n / 6)];
+  }
   function seatGrid(count, cols, order = 'col', fixedRows = 0) {
     cols = Math.max(1, cols | 0);
     const rows = fixedRows > 0 ? fixedRows | 0 : Math.ceil(count / cols);
@@ -1450,7 +1460,7 @@
     ttCell, remainingSubjects, duplicateSubjects, candidateSubjects, dayDistribution, cellStatus, validateTimetable, autoTimetable,
     subjectBanMap, examSlots, studySlots, placeSlots, slotInfo, parseCell, waitCell, homeCell, homeSize, moreCell, VOID_CELL, slotPlacementStatus, cellCap, refitSections, slotRoster, studentIndex, unplacedHomes, balanceMoves, placementIssues, unplacedBans, classNoOfRoom,
     autoPlaceSlot, fitWaits, roomsApart, roomSegments, pruneHistory, examTitleFor, HISTORY_MAX_BYTES, canUseExtra, buildSeating,
-    assignSeatsInOrder, assignSeatsRandom, validateSeating, seatGrid,
+    assignSeatsInOrder, assignSeatsRandom, validateSeating, seatGrid, defaultSeatLayout,
     isProgramWorkbook, readProgram, stateFromProgram, seatKey, toISODate,
     holidayReason, nextSchoolDays, hasHolidayTable,
   };

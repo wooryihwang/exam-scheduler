@@ -940,3 +940,8 @@ fieldset.lock-fs[disabled] [data-act="room-resync"], fieldset.lock-fs[disabled] 
 .btn.print-all { font-weight: 800; }
 .preview-note { max-width: 860px; margin: 0 auto 12px; padding: 8px 14px; border-radius: 10px; background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; font-size: 13.5px; text-align: center; }
 @media print { .preview-note { display: none; } }
+
+/* 고사실 좌석 배치 · 미리보기 더 보기 */
+.tbl.rooms td.seat-lay { white-space: nowrap; color: #64748b; }
+.tbl.rooms .xs-num { width: 40px; padding: 3px 4px; text-align: center; margin: 0 2px; }
+.preview-more { text-align: center; margin: 8px 0 20px; }

@@ -577,6 +577,20 @@
     addHoliday(iso) { if (iso && !state.extraHolidays.includes(iso)) { state.extraHolidays.push(iso); state.extraHolidays.sort(); fillDates(); commit(); } },
     removeHoliday(iso) { state.extraHolidays = state.extraHolidays.filter((x) => x !== iso); fillDates(); commit(); },
     setTime(k, v) { remember('bs', '교시 시간'); state.times[k] = v; commit(); },
+    /** 고사실 책상 배치 {cols, rows, auto}: 정해 둔 값 → 없으면 수용인원으로 기본 (별도실 번호는 인원으로) */
+    seatLayout(i, count = 0) {
+      const r = i >= S.SPECIAL_BASE ? null : state.rooms[i];
+      const [dc, dr] = C.defaultSeatLayout((r && r.cap) || count);
+      const cols = Number(r && r.seatCols) || dc, rows = Number(r && r.seatRows) || dr;
+      return { cols, rows, auto: !(r && (r.seatCols || r.seatRows)) };
+    },
+    setSeatLayout(i, field, v) {
+      if (!state.rooms[i]) return;
+      remember('bs', '좌석 배치');
+      const n = Math.max(0, Math.min(field === 'seatCols' ? 10 : 12, Number(v) || 0));
+      if (n) state.rooms[i][field] = n; else delete state.rooms[i][field];
+      commit();
+    },
     setRoom(i, field, v) { remember('bs', '고사실 정보'); state.rooms[i][field] = (field === 'cap' || field === 'maxClass' || field === 'stuCount') ? (v === '' ? 0 : Number(v)) : v; commit(); },
     /** 학반 교실(1반~마지막 반)의 최대수용인원을 기준인원으로 일괄 지정 → 바뀐 교실 수 */
     applyClassCap(n) {

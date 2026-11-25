@@ -450,7 +450,7 @@
               <button class="btn outline xs" data-act="class-cap">학반에 모두 적용</button>
             </div>`}
             <table class="tbl compact rooms">
-              <thead><tr><th>순서</th><th>반명</th><th title="학생수">인원</th><th>고사실명</th><th title="최대수용인원">수용</th><th>구분</th><th></th></tr></thead>
+              <thead><tr><th>순서</th><th>반명</th><th title="학생수">인원</th><th>고사실명</th><th title="최대수용인원">수용</th><th title="책상 배치 열(가로) × 줄(세로). 비우면 수용인원으로 기본(24명 4×6, 28명 4×7, 30명 5×6)">좌석 배치</th><th>구분</th><th></th></tr></thead>
               <tbody>${s.rooms.map((r, i) => `
                 <tr>
                   <td class="nowrap">${i + 1}${roomLock ? '' : `<button class="icon-btn" data-act="room-up" data-i="${i}" title="위로">▲</button><button class="icon-btn" data-act="room-down" data-i="${i}" title="아래로">▼</button>`}</td>
@@ -458,10 +458,11 @@
                   <td>${r.stuCount || ''}</td>
                   <td><input class="input sm" data-change="room" data-i="${i}" data-f="name" value="${h(r.name)}" ${nameLock ? 'disabled' : ''}></td>
                   <td><input class="input sm num" type="number" min="0" data-change="room" data-i="${i}" data-f="cap" value="${h(r.cap)}" ${nameLock ? 'disabled' : ''}></td>
+                  <td class="seat-lay">${(() => { const L = S.seatLayout(i); return `<input class="input sm num xs-num" type="number" min="1" max="10" data-change="room-seat" data-i="${i}" data-f="seatCols" value="${r.seatCols || ''}" placeholder="${L.cols}" title="열(가로)">×<input class="input sm num xs-num" type="number" min="1" max="12" data-change="room-seat" data-i="${i}" data-f="seatRows" value="${r.seatRows || ''}" placeholder="${L.rows}" title="줄(세로)">`; })()}</td>
                   <td>${C.isExtraRoom(r) ? '<span class="badge info">별도실</span>' : C.isRoomUsable(r) ? '<span class="badge muted">학반</span>' : '<span class="badge warn">미사용</span>'}</td>
                   <td>${roomLock ? '' : `<button class="icon-btn danger-text" data-act="room-del" data-i="${i}" title="삭제">✕</button>`}</td>
                 </tr>`).join('')}
-                <tr class="sum"><td></td><td>계</td><td>${s.rooms.reduce((t, r) => t + (Number(r.stuCount) || 0), 0)}</td><td colspan="4"></td></tr>
+                <tr class="sum"><td></td><td>계</td><td>${s.rooms.reduce((t, r) => t + (Number(r.stuCount) || 0), 0)}</td><td colspan="5"></td></tr>
               </tbody>
             </table>
             ${roomLock ? '<p class="hint">고사시간표 확정 후에는 고사실 추가·삭제·순서 변경이 잠깁니다.</p>' : ''}
@@ -555,6 +556,7 @@
       school(el) { S.setSchool(el.value); U.toast('학교 이름을 저장하였습니다.', 'ok'); },
       date(el) { S.setDate(+el.dataset.i, el.value); },
       time(el) { S.setTime(el.dataset.k, el.value.trim()); },
+      'room-seat'(el) { S.setSeatLayout(+el.dataset.i, el.dataset.f, el.value); },
       room(el) {
         const s = st(), i = +el.dataset.i, f = el.dataset.f;
         if (f === 'name' && el.value.trim() && s.rooms.some((r, j) => j !== i && r.name === el.value.trim())) { U.toast('고사실명이 중복됩니다.', 'error'); }

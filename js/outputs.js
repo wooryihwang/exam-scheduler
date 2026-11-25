@@ -174,9 +174,11 @@
     const away = new Map(seatAll().filter((r) => r.slot === slot.key && r.special && r.origRoom === room.name && r.origSeat > 0).map((r) => [r.origSeat, r]));
     const maxSeat = Math.max(list.length, ...list.map((r) => Number(r.seat) || 0), ...away.keys());
     const o = st().out;
-    const g = C.seatGrid(maxSeat, st().seatCols, o.seatOrder, Number(o.seatRows) || 0);
+    const L = S.seatLayout(i, maxSeat);
+    // 책상보다 학생이 많으면 줄을 늘림
+    const g = C.seatGrid(maxSeat, L.cols, o.seatOrder, Math.max(L.rows, Math.ceil(maxSeat / L.cols)));
     const bySeat = new Map(list.map((r) => [r.seat, r]));
-    const colHead = `<thead><tr>${Array.from({ length: g.cols || st().seatCols }, (_, k) => `<th class="col-head">${k + 1}열</th>`).join('')}</tr></thead>`;
+    const colHead = `<thead><tr>${Array.from({ length: g.cols || L.cols }, (_, k) => `<th class="col-head">${k + 1}열</th>`).join('')}</tr></thead>`;
     const grid = g.error ? `<p class="bad-text">${h(g.error)}</p>` : `<table class="seat-grid fill-main">${colHead}<tbody>${g.grid.map((line) => `<tr>${line.map((n) => {
       const r = bySeat.get(n), a = away.get(n);
       if (r) return `<td><div class="seat-card"><div class="seat-no">${n}</div><div class="seat-who"><div class="seat-id">${C.studentNo(r.grade, r.ban, r.num)}</div><div class="seat-name">${h(r.name)}</div></div></div></td>`;
@@ -194,7 +196,7 @@
     const listMm = people.length && o.seatList ? 12 + per * 4.9 : 0;
     // A4 297mm − 위아래 여백 28 − 제목 23 − 정보표 26 − 교탁 15 − 표 사이 8 − 주석 − 명렬표 (모두 여백 포함, mm)
     // examtable과 같이 열이 6개 이상이면 가로 용지
-    const land = (g.cols || st().seatCols) >= 6;
+    const land = (g.cols || L.cols) >= 6;
     const avail = (land ? 210 : 297) - 28 - 25 - 26 - 15 - 8 - notes * 9 - listMm - 8;
     const seatH = gridRows ? Math.max(9, Math.min(22, (avail - (gridRows + 1) * 2.5) / gridRows)) : 22;
     const listTbl = people.length && o.seatList ? `<div class="seat-lists" style="--groups:${groups}">${colsOf.map((c, gi) => `<table class="ptbl seat-list2"><thead><tr><th>연번</th><th>학번</th><th>성명</th><th>좌석</th><th>비고</th></tr></thead>
@@ -203,7 +205,7 @@
       <div class="seat-head">${schoolLine()}<div class="sh-sub">${h(S.title())}</div><div class="sh-title">고사실 좌석배치도</div></div>
       <table class="ptbl seat-info"><thead><tr><th>시행일</th><th>교시</th><th>고사실</th><th>과목(단위)</th><th>응시인원</th></tr></thead>
       <tbody><tr><td>${h(U.fmtDate(slotDate(slot)))}</td><td>${slot.period}교시${extraNote(slot, i)}</td><td class="acc">${h(room.name)}</td><td>${h(c.kind === 'wait' ? '대기(자습)' : c.subject || '')}</td><td class="acc">${list.length}명</td></tr></tbody></table>
-      <div class="podium top bar">교 탁 (앞)</div>${grid.replace('<table class="seat-grid fill-main">', `<table class="seat-grid cards with-list ${seatH < 14 ? 'small' : ''}" style="--seat-h:${seatH.toFixed(1)}mm">`)}${listTbl}${blanks ? `<p class="p-note">※ 점선 칸 ${blanks}개는 ${st().seatCols}열 × ${g.rows}줄 책상 중 응시자가 없는 자리입니다. (열의 수는 위쪽에서 바꿀 수 있습니다)</p>` : ''}${away.size ? `<p class="p-note">※ 별도실로 옮긴 학생 자리 ${away.size}개는 비워 두었습니다.</p>` : ''}</div>`;
+      <div class="podium top bar">교 탁 (앞)</div>${grid.replace('<table class="seat-grid fill-main">', `<table class="seat-grid cards with-list ${seatH < 14 ? 'small' : ''}" style="--seat-h:${seatH.toFixed(1)}mm">`)}${listTbl}${blanks ? `<p class="p-note">※ 점선 칸 ${blanks}개는 ${g.cols}열 × ${g.rows}줄 책상 중 응시자가 없는 자리입니다.</p>` : ''}${away.size ? `<p class="p-note">※ 별도실로 옮긴 학생 자리 ${away.size}개는 비워 두었습니다.</p>` : ''}</div>`;
   }
 
   // ---------------------------------------------------------------- 9-5 학급별 고사시간표 (세로, 한 장 35명)
@@ -440,11 +442,11 @@
         scopes = [['cur', '현재 고사실'], ['every', '모든 고사실']];
         break;
       case 'seat':
-        ctrl = slotSel + roomSel(roomsInSlot) + `<label class="inline">열(가로) <input type="number" class="input sm num" min="1" max="10" value="${st().seatCols}" data-change="o-cols"></label>
-          <label class="inline" title="0이면 인원에 맞춰 자동">줄(세로) <input type="number" class="input sm num" min="0" max="12" value="${Number(st().out.seatRows) || 0}" data-change="o-rows"></label>` +
+        ctrl = slotSel + roomSel(roomsInSlot) + (() => { const L = S.seatLayout(i), sp = i >= S.SPECIAL_BASE; return `<label class="inline" title="이 고사실 책상의 열 수 (2. 기초정보 고사실 정보에서도 바꿈)">열(가로) <input type="number" class="input sm num" min="1" max="10" value="${L.cols}" data-change="o-cols" ${sp ? 'disabled' : ''}></label>
+          <label class="inline" title="이 고사실 책상의 줄 수">줄(세로) <input type="number" class="input sm num" min="1" max="12" value="${L.rows}" data-change="o-rows" ${sp ? 'disabled' : ''}></label>`; })() +
           radios('o-order', '번호 순서', [['col', '세로(한 열)로 먼저'], ['row', '가로(앞줄)로 먼저']], st().out.seatOrder) +
           radios('o-seatlist', '모양', [['1', '좌석 + 명렬'], ['0', '좌석만']], st().out.seatList ? '1' : '0') +
-          '<span class="muted sm">설정은 모든 고사실에 똑같이 적용됩니다</span>';
+          '<span class="muted sm">열·줄은 고사실마다 따로 (기본: 수용 24명 4×6, 28명 4×7, 30명 5×6)</span>';
         preview = pageSeat(slot, i);
         scopes = [['cur', '현재 고사실'], ['slot', '이 교시 모든 고사실'], ['every', '전체 교시·전체 고사실']];
         break;
@@ -701,10 +703,21 @@
     setTimeout(() => window.print(), 50);
   }
 
-  /** 미리보기는 한 쪽만 보이므로, 출력하면 몇 쪽이 나오는지 알려 줌 */
+  /** 미리보기 위 안내: 고른 범위가 몇 쪽인지 */
   function previewNote() {
-    const n = ui.widest ? pageCount(ui.widest) : 0;
-    return n > 1 ? `<div class="preview-note">미리보기는 한 쪽만 보입니다. <b>🖨 전체 한 번에 출력</b>을 누르면 이 탭의 자료 <b>${n}쪽</b>이 모두 출력됩니다.</div>` : '';
+    const n = ui.tab === 'label' ? 0 : pageCount(ui.scope);
+    return n > 1 ? `<div class="preview-note">범위 <b>${h(ui.scopeLabel || '')}</b> · <b>${n}쪽</b> — 아래로 내리면 모두 볼 수 있습니다. 출력·저장도 이 범위 그대로입니다.</div>` : '';
+  }
+  /** 미리보기: 고른 범위의 모든 쪽 (너무 많으면 30쪽씩 더 보기) */
+  const PV_STEP = 30;
+  function previewPages(one) {
+    if (ui.tab === 'label') return one;
+    const key = ui.tab + '|' + ui.scope;
+    if (ui.pvKey !== key) { ui.pvKey = key; ui.pvMax = PV_STEP; }
+    if (pageCount(ui.scope) <= 1) return one;
+    const parts = printHtml(ui.scope).split(/(?=<div class="page[\s"])/).filter((x) => x.trim());
+    const shown = parts.slice(0, ui.pvMax).join('');
+    return shown + (parts.length > ui.pvMax ? `<div class="preview-more"><button class="btn outline" data-act="o-more">나머지 ${parts.length - ui.pvMax}쪽 더 보기</button></div>` : '');
   }
   const outputs = {
     id: 'outputs', no: 10, title: '인쇄 및 출력물',
@@ -718,10 +731,11 @@
       return `<div class="sticky-group">` + stepHead(10, (TABS.find(([k]) => k === ui.tab) || [])[1] || '인쇄 및 출력물', '고사 운영에 필요한 시간표와 명단을 미리 봅니다. 범위를 고른 뒤 <b>📊 엑셀 저장</b> · <b>📄 PDF 저장</b> · <b>🖨 출력</b> 중 하나를 누르세요.') +
         `<div class="tabs">${tabs().map(([k, l]) => `<button class="tab ${ui.tab === k ? 'on' : ''}" data-act="o-tab" data-tab="${k}">${h(l)}</button>`).join('')}</div>
         <div class="toolbar">${ctrl}<span class="spacer"></span>${printBtns}</div></div>
-        <div class="preview">${previewNote()}${preview}</div>`;
+        <div class="preview">${previewNote()}${previewPages(preview)}</div>`;
     },
     actions: {
       'o-tab'(el) { ui.tab = el.dataset.tab; rerender(); },
+      'o-more'() { ui.pvMax = (ui.pvMax || PV_STEP) + PV_STEP; rerender(); },
       'out-print'() { if (!scopeReady()) return; doPrint(ui.scope); },
       'out-print-all'() { if (!scopeReady()) return; doPrint(ui.widest || 'every'); },
       'out-excel'() { if (!scopeReady()) return; exportExcel(ui.scope, ui.scopeLabel); },
@@ -749,8 +763,8 @@
       'o-room'(el) { ui.room = el.value; rerender(); },
       'o-ban'(el) { ui.ban = el.value; rerender(); },
       'o-day'(el) { ui.day = el.value; rerender(); },
-      'o-cols'(el) { S.set('seatCols', Math.max(1, Math.min(10, Number(el.value) || 5))); },
-      'o-rows'(el) { S.setOut('seatRows', Math.max(0, Math.min(12, Number(el.value) || 0))); },
+      'o-cols'(el) { S.setSeatLayout(+ui.room, 'seatCols', el.value); },
+      'o-rows'(el) { S.setSeatLayout(+ui.room, 'seatRows', el.value); },
       'o-order'(el) { S.setOut('seatOrder', el.value); },
       'o-seatlist'(el) { S.setOut('seatList', el.value === '1'); },
       'o-paper'(el) { S.setOut('paper', el.value); },
