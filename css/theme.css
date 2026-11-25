@@ -880,3 +880,11 @@ fieldset.lock-fs[disabled] .basic-grid { opacity: .78; }
 fieldset.lock-fs[disabled] .input, fieldset.lock-fs[disabled] .seg-btn, fieldset.lock-fs[disabled] .btn, fieldset.lock-fs[disabled] .icon-btn, fieldset.lock-fs[disabled] .link, fieldset.lock-fs[disabled] .chip-x { cursor: not-allowed; }
 fieldset.lock-fs[disabled] .same-btn, fieldset.lock-fs[disabled] .chip-x, fieldset.lock-fs[disabled] .icon-btn, fieldset.lock-fs[disabled] .room-tools, fieldset.lock-fs[disabled] [data-act="holi-add"], fieldset.lock-fs[disabled] [data-holi-input], fieldset.lock-fs[disabled] [data-act="reset-times"] { display: none; }
 fieldset.lock-fs[disabled] [data-act="room-resync"], fieldset.lock-fs[disabled] [data-act="room-add-class"], fieldset.lock-fs[disabled] [data-act="room-add"] { display: none; }
+/* 단계 제목줄(확정 버튼 포함)은 스크롤해도 위에 붙어 있게 */
+@media (min-width: 761px) {
+  .step-head { position: sticky; top: 64px; z-index: 4; background: rgb(241, 245, 249); margin: -20px -24px 14px; padding: 14px 24px 10px; }
+  .step-head.stuck { box-shadow: 0 6px 10px -8px rgba(15, 23, 42, .25); border-bottom: 1px solid rgba(226, 232, 240, .9); }
+  .side { top: 140px; max-height: calc(100vh - 160px); }
+  .sp-left { top: 140px; }
+}
+@media print { .step-head { position: static; } }

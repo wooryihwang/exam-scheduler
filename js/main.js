@@ -100,6 +100,7 @@
     // 고사 시행 시간: 가려진 일차가 있을 때만 스크롤 안내 표시
     const ds = viewEl.querySelector('[data-day-scroll]'), hint = viewEl.querySelector('[data-scroll-hint]');
     if (ds && hint) requestAnimationFrame(() => { hint.hidden = ds.scrollHeight <= ds.clientHeight + 2; });
+    markStuck();
     if (focus) { const el = viewEl.querySelector(focus.sel); if (el) { el.focus(); try { el.setSelectionRange(focus.pos, focus.pos); } catch (e) { /* number 등 */ } } }
   }
   V.setRerender(render);
@@ -498,6 +499,9 @@
     tipTimer = setTimeout(() => { if (tipEl === el && el.isConnected) showTip(el); }, 250);
   });
   document.addEventListener('pointerdown', hideTip, true);
+  // 단계 제목줄이 위에 붙으면 그림자 (확정 버튼이 스크롤로 사라지지 않음)
+  function markStuck() { const sh = viewEl.querySelector('.step-head'); if (sh) sh.classList.toggle('stuck', window.scrollY > 8); }
+  window.addEventListener('scroll', markStuck, { passive: true });
   document.addEventListener('scroll', hideTip, true);
   document.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
