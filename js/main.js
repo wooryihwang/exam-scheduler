@@ -414,7 +414,7 @@
   };
   document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-act]');
-    if (!el || el.disabled) return;
+    if (!el || el.disabled || (el.matches && el.matches(':disabled'))) return;
     const act = el.dataset.act;
     const f = (cur().actions && cur().actions[act]) || globalActions[act];
     if (f) { e.preventDefault(); f(el, e); }

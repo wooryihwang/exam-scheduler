@@ -1303,6 +1303,7 @@
     const r = findSameTimeCombos(st.subjects.filter((x) => x.evaluate), sets, total);
     st.combos = r.combos; st.combosOverflow = r.overflow;
     st.confirmed.subjects = true;
+    st.confirmed.basic = true; st.confirmed.list = true;
     report.push(`평가과목 ${st.evalSubjects.length}과목 확정`);
     for (const [k, v] of Object.entries(p.timetable)) { const f = v.filter((x) => ev.has(x)); if (f.length) st.timetable[k] = f; }
     if (!p.confirmed.timetable) return { state: st, report };

@@ -16,7 +16,7 @@
     title: '',
     fileName: '',
     rows: [],
-    confirmed: { roster: false, subjects: false, timetable: false, placement: false, seats: false },
+    confirmed: { roster: false, basic: false, list: false, subjects: false, timetable: false, placement: false, seats: false },
     subjects: [],
     subjectClasses: [],
     rooms: [],
@@ -52,6 +52,11 @@
   });
   const normalize = (obj) => {
     const s = Object.assign(blank(), obj);
+    // 예전 데이터: 기초정보·과목현황 확정이 따로 없던 때 → 평가과목 이후 단계까지 확정했으면 둘 다 확정으로 봄
+    const oc = (obj && obj.confirmed) || {};
+    s.confirmed = Object.assign(blank().confirmed, oc);
+    if (oc.basic === undefined) s.confirmed.basic = !!(oc.subjects || oc.timetable || oc.placement);
+    if (oc.list === undefined) s.confirmed.list = !!(oc.subjects || oc.timetable || oc.placement);
     s.out = Object.assign(blank().out, obj && obj.out);
     s.options = Object.assign(blank().options, obj && obj.options);
     s.special = Object.assign(blank().special, obj && obj.special);
@@ -495,7 +500,7 @@
       const order = ['roster', 'subjects', 'timetable', 'placement', 'seats'];
       const from = order.indexOf(step);
       const has = (k) => order.indexOf(k) > from && c[k];
-      if (step === 'roster') out.push('과목 현황·평가과목 선택 (다시 확정해야 함)');
+      if (step === 'roster') out.push('기초정보·과목현황 확정 상태와 평가과목 선택 (다시 확정해야 함)');
       if (step === 'subjects' || (step === 'roster' && c.subjects)) out.push('동시 시험 가능 과목 조합');
       if (has('timetable') || step === 'timetable') out.push(`고사시간표 확정 상태 (편성한 시간표 ${Object.keys(state.timetable).length}칸은 남음)`);
       if (has('placement') || step === 'placement') out.push(`고사실별 학생 명단 ${state.seating.length}건과 좌석번호`);
@@ -503,8 +508,25 @@
       if ((has('placement') || step === 'placement') && Object.keys(state.special.students).length) out.push(`별도실 학생 지정 ${Object.keys(state.special.students).length}명 (지정 자체는 남지만 다시 확정해야 반영)`);
       return out;
     },
+    /** 2. 기초정보 확정: 시험 일자·교시 시간이 다 있어야 함. 빠진 것이 있으면 그 목록을 돌려줌 */
+    confirmBasic() {
+      const miss = [];
+      for (let d = 1; d <= state.examDays; d++) if (!state.dates[d - 1]) miss.push(`${d}일차 시행 일자`);
+      for (let d = 1; d <= state.examDays; d++) for (let p = 1; p <= state.periods; p++) { const v = state.times[C.slotKey(d, p)]; if (!v || C.minutesOf(v) === 'XX분') miss.push(`${d}일차 ${p}교시 시간`); }
+      if (!state.rooms.some((r) => C.isRoomUsable(r))) miss.push('고사실');
+      if (miss.length) return miss;
+      state.confirmed.basic = true;
+      autoBackup('기초정보 확정');
+      commit();
+      return [];
+    },
+    unconfirmBasic() { state.confirmed.basic = false; commit(); },
+    /** 3. 과목현황 확인 확정 (조회 단계) */
+    confirmList() { state.confirmed.list = true; commit(); },
+    unconfirmList() { state.confirmed.list = false; commit(); },
     unconfirmRoster() {
       S.unconfirmSubjects(true);
+      state.confirmed.basic = false; state.confirmed.list = false;
       state.subjects = []; state.subjectClasses = [];
       state.confirmed.roster = false;
       commit();

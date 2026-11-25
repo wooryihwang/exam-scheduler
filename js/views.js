@@ -375,10 +375,11 @@
   // ================================================================ 2. 기초정보
   const basic = {
     id: 'basic', no: 2, title: '기초정보',
-    status: () => st().confirmed.roster && st().dates.some(Boolean),
+    status: () => st().confirmed.basic,
     render() {
       const s = st();
       if (!s.confirmed.roster) return stepHead(2, '기초정보 설정') + needFirst('먼저 학생편성현황을 확정하세요.', 'roster', '1. 학생편성현황');
+      const bLock = s.confirmed.basic;
       const roomLock = s.confirmed.timetable, nameLock = s.confirmed.placement;
       const grade = C.val(s.rows[0]?.학년);
       const dayList = Array.from({ length: s.examDays }, (_, i) => i + 1);
@@ -396,11 +397,12 @@
           <table class="tbl compact times"><tbody>${rows}</tbody></table>
         </div>`;
       }).join('');
-      const schoolBox = `<label class="school-box"><span>학교 이름</span><input class="input" data-change="school" value="${h(S.school())}" placeholder="예) ○○고등학교" maxlength="40"><small>모든 학년 출력물에 인쇄됩니다</small></label>`;
+      const schoolBox = `<label class="school-box"><span>학교 이름</span><input class="input" data-change="school" value="${h(S.school())}" placeholder="예) ○○고등학교" maxlength="40" ${bLock ? 'disabled' : ''}><small>모든 학년 출력물에 인쇄됩니다</small></label>`;
       const others = S.projects().filter((p) => !p.current);
       const copyBtn = others.length ? `<button class="btn outline sm" data-act="copy-basic" title="다른 학년 작업의 시행 일자·교시 시간·추가 휴일과 특별실·학반 기준인원을 이 학년으로 가져옵니다.">⇩ 다른 학년 일정·고사실 가져오기</button>` : '';
-      return stepHead(2, '기초정보 설정', '고사 명칭, 시행 일자와 교시별 시간, 고사실(교실) 정보를 입력합니다.', '<button class="btn ghost" data-act="undo" title="되돌리기 (Ctrl+Z)">↶ 되돌리기</button>' + copyBtn + schoolBox) +
-        `<div class="basic-grid">
+      return stepHead(2, '기초정보 설정', '고사 명칭, 시행 일자와 교시별 시간, 고사실(교실) 정보를 입력합니다.', (bLock ? '' : '<button class="btn ghost" data-act="undo" title="되돌리기 (Ctrl+Z)">↶ 되돌리기</button>' + copyBtn) + schoolBox + confirmBtn(bLock, '기초정보 확정 취소', '기초정보 확정', bLock ? 'basic-unconfirm' : 'basic-confirm')) +
+        (bLock ? banner('ok', '🔒 기초정보가 <b>확정</b>되어 잠겨 있습니다. 고사 명칭·일자·시간·고사실을 고치려면 <b>기초정보 확정 취소</b>를 누르세요.') : '') +
+        `<fieldset class="lock-fs" ${bLock ? 'disabled' : ''}><div class="basic-grid">
           <div class="card">
             <h3>1. 고사 정보</h3>
             <div class="form-row"><label>학년</label><div class="static">${grade}학년</div></div>
@@ -470,9 +472,19 @@
             </ul></details>
           </div>
         </div>
-        ${banner('info', '입력을 마쳤으면 <b>3. 과목 현황</b>을 확인한 뒤 <b>4. 평가과목</b>으로 이동하세요.')}`;
+        </fieldset>
+        ${bLock ? '' : banner('info', '입력을 마쳤으면 위의 <b>기초정보 확정</b>을 누르세요. 그다음 <b>3. 과목현황</b>을 확인합니다.')}`;
     },
     actions: {
+      'basic-confirm'() {
+        const miss = S.confirmBasic();
+        if (miss.length) return U.alertList('기초정보를 확정할 수 없습니다', '다음 항목을 먼저 입력하세요.', miss);
+        U.toast('기초정보를 확정하였습니다. 3. 과목현황을 확인하세요.', 'ok');
+      },
+      async 'basic-unconfirm'() {
+        if (!(await U.confirm('기초정보 확정을 취소할까요?\n\n고사 명칭·일자·시간·고사실을 다시 고칠 수 있습니다. 다른 단계의 작업은 그대로 남습니다.', '기초정보 확정 취소', '확정 취소'))) return;
+        S.unconfirmBasic(); U.toast('기초정보 확정을 취소하였습니다.', 'ok');
+      },
       async 'exam-days'(el) {
         const n = +el.dataset.n;
         const used = S.setExamDays(n);
@@ -554,12 +566,13 @@
   // ================================================================ 3. 과목
   const subjects = {
     id: 'subjects', no: 3, title: '과목현황',
-    status: () => st().confirmed.roster,
+    status: () => st().confirmed.list,
     render() {
       const s = st();
       if (!s.confirmed.roster) return stepHead(3, '과목 및 분반 현황 (조회)') + needFirst('먼저 학생편성현황을 확정하세요.', 'roster', '1. 학생편성현황');
+      if (!s.confirmed.basic) return stepHead(3, '과목 및 분반 현황 (조회)') + needFirst('먼저 기초정보를 확정하세요.', 'basic', '2. 기초정보');
       const conv = s.rows.some((x) => /편의/.test(x.강의실));
-      return stepHead(3, '과목 및 분반 현황 (조회)', '학생편성현황에서 집계한 과목별·강의실별 학생 수입니다. (조회 전용)') +
+      return stepHead(3, '과목 및 분반 현황 (조회)', '학생편성현황에서 집계한 과목별·강의실별 학생 수입니다. (조회 전용)', confirmBtn(s.confirmed.list, '과목현황 확정 취소', '과목현황 확인 완료', s.confirmed.list ? 'list-unconfirm' : 'list-confirm')) +
         (conv ? banner('warn', '※ 편의반도 반수에 포함됩니다.') : '') +
         `<div class="grid-2 top">
           <div class="card"><h3>과목별 학생수 <span class="muted">(${s.subjects.length}과목, ${s.subjects.reduce((t, x) => t + x.stuCount, 0)}건)</span></h3>
@@ -571,7 +584,11 @@
             <tbody>${[...S.sbMap().values()].map((x) => `<tr><td>${h(x.subject)}</td><td>${x.index}반</td><td>${h(x.room)}</td><td>${x.stuCount}</td></tr>`).join('')}</tbody></table></div>
           </div>
         </div>
-        ${banner('info', '이상이 없으면 <b>4. 평가과목</b>으로 이동하세요.')}`;
+        ${s.confirmed.list ? '' : banner('info', '이상이 없으면 위의 <b>과목현황 확인 완료</b>를 누르고 <b>4. 평가과목</b>으로 이동하세요.')}`;
+    },
+    actions: {
+      'list-confirm'() { S.confirmList(); U.toast('과목현황을 확인하였습니다. 4. 평가과목으로 이동하세요.', 'ok'); },
+      'list-unconfirm'() { S.unconfirmList(); U.toast('과목현황 확정을 취소하였습니다.', 'ok'); },
     },
   };
 
@@ -619,6 +636,8 @@
     render() {
       const s = st();
       if (!s.confirmed.roster) return stepHead(4, '평가 대상 과목 지정') + needFirst('먼저 학생편성현황을 확정하세요.', 'roster', '1. 학생편성현황');
+      if (!s.confirmed.basic) return stepHead(4, '평가 대상 과목 지정') + needFirst('먼저 기초정보를 확정하세요.', 'basic', '2. 기초정보');
+      if (!s.confirmed.list && !s.confirmed.subjects) return stepHead(4, '평가 대상 과목 지정') + needFirst('먼저 과목현황을 확인하세요.', 'subjects', '3. 과목현황');
       const locked = s.confirmed.subjects;
       const n = s.subjects.filter((x) => x.evaluate).length;
       const ev = s.subjects.filter((x) => s.evalSubjects.includes(x.name));

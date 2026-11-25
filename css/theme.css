@@ -873,3 +873,10 @@ body[data-grade="3"] .page { --p-accent: #9b1c1c; }
 .home .hm-grid > .hm-card .hm-grades { flex: 1; display: flex; flex-direction: column; gap: 6px; }
 .home .hm-grid > .hm-card .hm-grade { flex: 1; min-height: 38px; }
 .home .hm-grid > .hm-card .hm-actions { margin-top: auto; }
+
+/* 기초정보 확정 잠금 */
+fieldset.lock-fs { border: 0; margin: 0; padding: 0; min-width: 0; }
+fieldset.lock-fs[disabled] .basic-grid { opacity: .78; }
+fieldset.lock-fs[disabled] .input, fieldset.lock-fs[disabled] .seg-btn, fieldset.lock-fs[disabled] .btn, fieldset.lock-fs[disabled] .icon-btn, fieldset.lock-fs[disabled] .link, fieldset.lock-fs[disabled] .chip-x { cursor: not-allowed; }
+fieldset.lock-fs[disabled] .same-btn, fieldset.lock-fs[disabled] .chip-x, fieldset.lock-fs[disabled] .icon-btn, fieldset.lock-fs[disabled] .room-tools, fieldset.lock-fs[disabled] [data-act="holi-add"], fieldset.lock-fs[disabled] [data-holi-input], fieldset.lock-fs[disabled] [data-act="reset-times"] { display: none; }
+fieldset.lock-fs[disabled] [data-act="room-resync"], fieldset.lock-fs[disabled] [data-act="room-add-class"], fieldset.lock-fs[disabled] [data-act="room-add"] { display: none; }

@@ -174,7 +174,7 @@ t('새 고사 시작: 자료는 지우고 고사실·시간·과목코드는 남
   await S.newExam({ keepCodes: true });
   assert.strictEqual(S.state.rows.length, 0);
   assert.strictEqual(S.state.seating.length, 0);
-  assert.deepStrictEqual(S.state.confirmed, { roster: false, subjects: false, timetable: false, placement: false, seats: false });
+  assert.deepStrictEqual(S.state.confirmed, { roster: false, basic: false, list: false, subjects: false, timetable: false, placement: false, seats: false });
   assert.strictEqual(S.state.rooms.length, rooms, '고사실 유지');
   assert.strictEqual(JSON.stringify(S.state.times), times, '교시 시간 유지');
   assert.strictEqual(S.state.subjectCodes[code], '07', '과목코드 유지');
@@ -237,6 +237,24 @@ const resetKeepTest = () => t('초기화: 위탁학생·별도 고사실 학생 
   assert.strictEqual(S.saveFolder(), '고사작업파일');
 });
 
+const basicConfirmTest = () => t('기초정보·과목현황 확정은 따로 · 편성현황 확정 취소하면 같이 풀림', () => {
+  S.newProject('기초확정'); S.importRows(rows, 'b.xlsx'); S.confirmRoster();
+  assert.strictEqual(S.state.confirmed.basic, false, '편성현황만 확정하면 기초정보는 미확정');
+  assert.strictEqual(S.state.confirmed.list, false, '과목현황도 미확정');
+  assert.deepStrictEqual(S.confirmBasic(), []);
+  assert.strictEqual(S.state.confirmed.basic, true);
+  S.confirmList(); assert.strictEqual(S.state.confirmed.list, true);
+  S.unconfirmRoster();
+  assert.strictEqual(S.state.confirmed.basic, false); assert.strictEqual(S.state.confirmed.list, false);
+  // 날짜가 비면 확정 안 됨
+  S.confirmRoster(); S.setDate(0, ''); S.state.dates.fill('');
+  assert.ok(S.confirmBasic().some((x) => /시행 일자/.test(x)));
+  // 예전 데이터(평가과목까지 확정, basic 없음)는 기초정보·과목현황도 확정으로 읽힘
+  const old = JSON.parse(S.exportJSON()); delete old.confirmed.basic; delete old.confirmed.list; old.confirmed.subjects = true;
+  S.importJSON(JSON.stringify(old));
+  assert.strictEqual(S.state.confirmed.basic, true); assert.strictEqual(S.state.confirmed.list, true);
+});
+
 const industryTest = () => t('위탁학생: 3학년에서만 · 표시 기억 · 연락 확인', () => {
   const rows3 = C.parseNeis(window.Sample.sampleAoa(3)).rows;
   // 1학년 작업에서는 기능이 꺼짐
@@ -296,4 +314,4 @@ const cellLockTest = () => t('학생 배치 칸 잠금: 자동 배치·인원 �
   assert.strictEqual(S.toggleCellLock(slot.key, i), false);
 });
 
-Promise.all(pending).then(() => { resetTest(); industryTest(); cellLockTest(); resetKeepTest(); console.log(`\n${pass}개 테스트 통과`); }).catch((e) => { console.error(e); process.exit(1); });
+Promise.all(pending).then(() => { resetTest(); industryTest(); cellLockTest(); resetKeepTest(); basicConfirmTest(); console.log(`\n${pass}개 테스트 통과`); }).catch((e) => { console.error(e); process.exit(1); });
