@@ -1136,6 +1136,8 @@
       for (const [k, to] of Object.entries(ctx.prevMoves)) if (ctx.locked.has(Number(to)) || ctx.locked.has(from.get(k))) keep[k] = to;
     }
     const base = slotRoster(ctx, slot, cells, keep);
+    const homeOf = new Map(); // 학생 → 이동 전 교실
+    for (const [i, r] of slotRoster(ctx, slot, cells, {}).rooms) for (const p of r.list) homeOf.set(studentKey(p.ban, p.num), i);
     // 시험실 정원은 그 분반 원래 인원(학생 이동 전) 이상 → 분반을 다른 교실로 나누지 않음
     const cap = (i) => Number(rooms[i].cap) || Infinity;
     const groups = new Map(); // 같은 과목 시험실끼리, 자습실끼리. 시험실 정원은 그 분반 인원 이상이라 분반 학생을 다른 교실로 나누지 않음 (잠긴 칸 제외)
@@ -1165,19 +1167,32 @@
       }
       // [인원 맞추기] 누를 때: 자습실(대기실) 인원을 골고루 (예: 24·10·24·24·28 → 22씩). 받는 교실의 반 학생을 먼저 옮김
       if (ctx.even && list.length > 1 && list[0] && list[0].kind === 'wait') {
-        const total = list.reduce((t, x) => t + x.list.length, 0);
-        for (let guard = 0; guard < total; guard++) {
-          // 가장 적은 교실(빈자리 있음) ← 가장 많은 교실, 차이가 2명 이상일 때만
-          const to = list.filter((x) => x.list.length < cap(x.i)).sort((a, b) => a.list.length - b.list.length || a.i - b.i)[0];
-          const from = list.slice().sort((a, b) => b.list.length - a.list.length || a.i - b.i)[0];
-          if (!to || !from || from === to || from.list.length - to.list.length < 2) break;
-          let k = -1;
-          for (let j = from.list.length - 1; j >= 0; j--) if (from.list[j].ban === rooms[to.i].ban) { k = j; break; }
-          if (k < 0) k = from.list.length - 1;
-          const [s] = from.list.splice(k, 1);
-          to.list.push(s);
-          moves[studentKey(s.ban, s.num)] = to.i;
-          moved++;
+        // 1) 교실마다 목표 인원: 좌석 안에서 고르게 (좌석이 적은 교실부터 채워 남는 인원을 나눔)
+        const pool = list.flatMap((x) => x.list);
+        const target = new Map();
+        let remain = pool.length;
+        list.slice().sort((a, b) => cap(a.i) - cap(b.i) || a.i - b.i).forEach((x, k, arr) => {
+          const t = Math.min(cap(x.i), Math.ceil(remain / (arr.length - k)));
+          target.set(x, t); remain -= t;
+        });
+        // 2) 자기 반 교실이 대기실이면 자기 반 학생부터 그 교실에
+        const done = new Set(), seat = new Map(list.map((x) => [x, []]));
+        for (const x of list) {
+          const own = pool.filter((p) => !done.has(p) && p.ban === rooms[x.i].ban).sort((a, b) => a.num - b.num);
+          for (const p of own.slice(0, target.get(x))) { seat.get(x).push(p); done.add(p); }
+        }
+        // 3) 나머지(자기 반 교실이 시험실·빈 교실인 반 등)는 반·번호 순으로 남는 자리에 앞 교실부터
+        const rest = pool.filter((p) => !done.has(p)).sort((a, b) => cmp(a.ban, b.ban) || a.num - b.num);
+        for (const x of list.slice().sort((a, b) => a.i - b.i)) while (rest.length && seat.get(x).length < target.get(x)) seat.get(x).push(rest.shift());
+        for (const p of rest) { const x = list.slice().sort((a, b) => (cap(b.i) - seat.get(b).length) - (cap(a.i) - seat.get(a).length))[0]; seat.get(x).push(p); }
+        // 4) 원래 자리(학생 이동 전)와 다르면 이동으로 기록
+        for (const x of list) {
+          for (const p of seat.get(x)) {
+            const k = studentKey(p.ban, p.num);
+            if (homeOf.get(k) === x.i) { if (moves[k] != null) { delete moves[k]; moved--; } }
+            else { if (moves[k] == null) moved++; moves[k] = x.i; }
+          }
+          x.list = seat.get(x);
         }
       }
       // 추가 고사장이 있는 과목: 그 과목 시험실과 추가 고사장의 인원을 골고루 (예: 27·30·0 → 19·19·19)

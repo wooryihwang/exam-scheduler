@@ -167,9 +167,16 @@ t('인원 맞추기: 자습실(대기실) 인원을 골고루', () => {
     const info = C.slotInfo(sl, students, subjectClasses);
     const cells = C.autoPlaceSlot(sl, [], { rooms: ctx0.rooms, sbMap, info }, false, 'rule');
     const b = C.balanceMoves({ ...ctx0, even: true }, sl, cells);
-    const ns = [...C.slotRoster(ctx0, sl, cells, b.moves).rooms.values()].filter((x) => x.kind === 'wait').map((x) => x.list.length);
+    const after = [...C.slotRoster(ctx0, sl, cells, b.moves).rooms].filter(([, x]) => x.kind === 'wait');
+    const ns = after.map(([, x]) => x.list.length);
     if (ns.length < 2) continue;
     assert.ok(Math.max(...ns) - Math.min(...ns) <= 1, sl.key + ' ' + JSON.stringify(ns));
+    // 자기 반 우선: 대기실마다 그 반 자습 학생이 다른 대기실에 가 있지 않음 (자리가 있는 한)
+    const waitAll = after.flatMap(([, x]) => x.list);
+    for (const [i, x] of after) {
+      const ban = ctx0.rooms[i].ban, mine = x.list.filter((p) => p.ban === ban).length, total = waitAll.filter((p) => p.ban === ban).length;
+      assert.strictEqual(mine, Math.min(total, x.list.length), `${sl.key} ${ctx0.rooms[i].name}: 자기 반 ${mine}/${total}`);
+    }
     checked++;
   }
   assert.ok(checked > 0, '자습실이 2개 이상인 교시가 있어야 함');
